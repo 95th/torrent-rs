@@ -1,0 +1,9 @@
+[package]
+name = "dht"
+version = "0.1.0"
+authors = ["gurv-s <vargwin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rand = "0.6"
+hex = "0.3.2"

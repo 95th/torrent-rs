@@ -45,7 +45,7 @@ impl From<Vec<&str>> for Value {
     }
 }
 
-type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 pub trait TryConvert<T> {
     fn convert(self) -> Result<T>;
@@ -149,38 +149,38 @@ impl Value {
             List(usize)
         }
 
-        let mut cstack = vec![];
-        let mut vstack = vec![];
+        let mut command_stack = vec![];
+        let mut value_stack = vec![];
         loop {
             match next_byte(bytes) {
-                Ok(b'e') => match cstack.pop() {
+                Ok(b'e') => match command_stack.pop() {
                     Some(Kind::List(len)) => {
-                        let mut vec = Vec::with_capacity(vstack.len() - len);
-                        while vstack.len() > len {
-                            vec.push(vstack.pop().unwrap());
+                        let mut vec = Vec::with_capacity(value_stack.len() - len);
+                        while value_stack.len() > len {
+                            vec.push(value_stack.pop().unwrap());
                         }
                         vec.reverse();
-                        vstack.push(Value::List(vec));
+                        value_stack.push(Value::List(vec));
                     },
                     Some(Kind::Dict(len)) => {
-                        if (vstack.len() - len) % 2 != 0 {
+                        if (value_stack.len() - len) % 2 != 0 {
                             return Err(Error::ParseDict);
                         }
                         let mut map = BTreeMap::new();
-                        while vstack.len() > len {
-                            let val = vstack.pop().unwrap();
-                            if let Some(key) = vstack.pop().and_then(|v| v.convert().ok()) {
+                        while value_stack.len() > len {
+                            let val = value_stack.pop().unwrap();
+                            if let Some(key) = value_stack.pop().and_then(|v| v.convert().ok()) {
                                 map.insert(key, val);
                             } else {
                                 return Err(Error::ParseDict);
                             }
                         }
-                        vstack.push(Value::Dict(map))
+                        value_stack.push(Value::Dict(map))
                     },
                     None => return Err(Error::InvalidChar(b'e'))
                 },
                 Ok(v) => {
-                    if cstack.is_empty() && !vstack.is_empty() {
+                    if command_stack.is_empty() && !value_stack.is_empty() {
                         return Err(Error::EOF);
                     }
                     match v {
@@ -190,11 +190,11 @@ impl Value {
                             let len = value.convert()?;
                             let mut v = vec![0u8; len as usize];
                             bytes.read_exact(&mut v).map_err(|_| Error::EOF)?;
-                            vstack.push(Value::String(v));
+                            value_stack.push(Value::String(v));
                         }
-                        b'i' => vstack.push(Value::Int(read_until(bytes, b'e')?.convert()?)),
-                        b'l' => cstack.push(Kind::List(vstack.len())),
-                        b'd' => cstack.push(Kind::Dict(vstack.len())),
+                        b'i' => value_stack.push(Value::Int(read_until(bytes, b'e')?.convert()?)),
+                        b'l' => command_stack.push(Kind::List(value_stack.len())),
+                        b'd' => command_stack.push(Kind::Dict(value_stack.len())),
                         c => return Err(Error::InvalidChar(c))
                     }
                 },
@@ -203,8 +203,8 @@ impl Value {
             }
         }
 
-        if cstack.is_empty() && vstack.len() == 1 {
-            Ok(vstack.into_iter().next().unwrap())
+        if command_stack.is_empty() && value_stack.len() == 1 {
+            Ok(value_stack.into_iter().next().unwrap())
         } else {
             Err(Error::EOF)
         }

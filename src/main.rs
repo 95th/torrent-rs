@@ -1,11 +1,16 @@
-use ed25519_dalek::{Keypair, Signature};
-use digest::Digest;
+use std::time::Instant;
+
+use dht::NodeId;
 
 fn main() {
-    let mut rng = rand::thread_rng();
-    let key_pair: Keypair = Keypair::generate(&mut rng);
-    let msg: &[u8] = b"Hello world";
-
-    let sign: Signature = key_pair.sign(msg);
-    println!("{:?}", sign);
+    let id: NodeId = "AAAAAAAAAAAAAAAAAAAA".parse().unwrap();
+    println!("{}", id);
+    for _ in 1..100 {
+        let start = Instant::now();
+        for _ in 1..10000 {
+            let _list: Vec<NodeId> = (1..160).map(|i| id.at_dist(i)).collect();
+        }
+        let took = Instant::now() - start;
+        println!("{} ms", took.as_millis());
+    }
 }
