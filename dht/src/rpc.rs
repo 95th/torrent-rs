@@ -1,6 +1,6 @@
-use crate::id::NodeId;
+use crate::id::Id;
 
 enum Op {
-    FindNode(NodeId),
+    FindNode(Id),
     Ping()
 }

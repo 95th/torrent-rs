@@ -7,17 +7,17 @@ use rand::prelude::*;
 
 const SIZE: usize = 20;
 
-#[derive(Debug, PartialEq, Clone, Copy, Default)]
-pub struct NodeId([u8; SIZE]);
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Default)]
+pub struct Id([u8; SIZE]);
 
-impl NodeId {
-    pub fn new() -> NodeId {
+impl Id {
+    pub fn new() -> Id {
         let mut buf = [0; SIZE];
         rand::thread_rng().fill_bytes(&mut buf);
-        NodeId(buf)
+        Id(buf)
     }
 
-    pub fn at_dist(&self, bits: usize) -> NodeId {
+    pub fn at_dist(&self, bits: usize) -> Id {
         assert_eq!(true, bits < SIZE * 8);
 
         let mut buf = [0; SIZE];
@@ -34,10 +34,10 @@ impl NodeId {
            .skip(idx + 1)
            .for_each(|v| *v = 0xFF);
 
-        *self ^ NodeId(buf)
+        *self ^ Id(buf)
     }
 
-    pub fn get_dist(&self, to: NodeId) -> usize {
+    pub fn dist_to(&self, to: Id) -> usize {
         let node = *self ^ to;
         let mut zeros = 0;
 
@@ -62,28 +62,34 @@ impl NodeId {
 #[derive(Debug)]
 pub struct ParseError(String);
 
-impl FromStr for NodeId {
+impl FromStr for Id {
     type Err = ParseError;
 
-    fn from_str(s: &str) -> Result<NodeId, ParseError> {
+    fn from_str(s: &str) -> Result<Id, ParseError> {
         if s.len() != SIZE {
             return Err(ParseError(format!("Incorrect length. Expected {}, actual: {}", SIZE, s.len())));
         }
 
         let mut buf = [0; SIZE];
         buf.copy_from_slice(s.as_bytes());
-        Ok(NodeId(buf))
+        Ok(Id(buf))
     }
 }
 
-impl fmt::Display for NodeId {
+impl From<[u8; 20]> for Id {
+    fn from(buf: [u8; 20]) -> Id {
+        Id(buf)
+    }
+}
+
+impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.0.write_hex(f)?;
         Ok(())
     }
 }
 
-impl Deref for NodeId {
+impl Deref for Id {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
@@ -91,65 +97,65 @@ impl Deref for NodeId {
     }
 }
 
-impl DerefMut for NodeId {
+impl DerefMut for Id {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl BitXor for NodeId {
-    type Output = NodeId;
+impl BitXor for Id {
+    type Output = Id;
 
-    fn bitxor(self, rhs: NodeId) -> Self::Output {
+    fn bitxor(self, rhs: Id) -> Self::Output {
         let mut buf = [0; SIZE];
         buf.iter_mut()
            .zip(self.iter().zip(rhs.iter()))
            .for_each(|(a, (b, c))| *a = b ^ c);
-        NodeId(buf)
+        Id(buf)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::NodeId;
+    use super::Id;
     use super::ParseError;
 
     #[test]
     fn does_parse() {
         let hash = "00000000000000000000";
         let id = hash.parse().unwrap();
-        assert_eq!(NodeId([48; 20]), id);
+        assert_eq!(Id([48; 20]), id);
     }
 
     #[test]
     fn does_not_parse() {
         let hash = "0000";
-        let id: Result<NodeId, ParseError> = hash.parse();
+        let id: Result<Id, ParseError> = hash.parse();
         assert_eq!(true, id.is_err());
     }
 
     #[test]
     fn xor() {
-        let a = NodeId([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-        let b = NodeId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
-        let expected: NodeId = NodeId([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3]);
+        let a = Id([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+        let b = Id([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+        let expected: Id = Id([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3]);
         assert_eq!(expected, a ^ b);
     }
 
     #[test]
     fn at_dist() {
-        let id = NodeId([0; 20]);
+        let id = Id([0; 20]);
         let far = id.at_dist(6);
         let mut buf = [0; 20];
         buf[19] = 0x3F;
-        let expected = NodeId(buf);
+        let expected = Id(buf);
         assert_eq!(expected, far);
     }
 
     #[test]
     fn get_dist() {
-        let id = NodeId([0; 20]);
+        let id = Id([0; 20]);
         let far = id.at_dist(6);
-        assert_eq!(6, far.get_dist(id));
+        assert_eq!(6, far.dist_to(id));
     }
 }
