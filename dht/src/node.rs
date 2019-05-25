@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::binary_heap::BinaryHeap;
 use std::collections::HashSet;
 use std::mem;
 use std::net::IpAddr;
@@ -35,15 +36,29 @@ impl Node {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct NodeHeapItem {
     dist: usize,
     node: Node
 }
 
+impl Ord for NodeHeapItem {
+    fn cmp(&self, other: &NodeHeapItem) -> Ordering {
+        other.dist
+             .cmp(&self.dist)
+             .then_with(|| self.node.cmp(&other.node))
+    }
+}
+
+impl PartialOrd for NodeHeapItem {
+    fn partial_cmp(&self, other: &NodeHeapItem) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 pub struct NodeHeap {
     // TODO: change it to priority queue
-    heap: Vec<NodeHeapItem>,
+    heap: BinaryHeap<NodeHeapItem>,
     node: Node,
     contacted: HashSet<Id>,
     max_size: usize,
@@ -53,7 +68,7 @@ impl NodeHeap {
     pub fn new(node: Node, max_size: usize) -> NodeHeap {
         NodeHeap {
             node,
-            heap: vec![],
+            heap: BinaryHeap::new(),
             contacted: HashSet::new(),
             max_size
         }
@@ -61,25 +76,23 @@ impl NodeHeap {
 
     pub fn remove_all(&mut self, nodes: &[Node]) {
         let peers: HashSet<&Node> = nodes.iter().collect();
-        let old_heap = mem::replace(&mut self.heap, Vec::new());
+        let old_heap = mem::replace(&mut self.heap, BinaryHeap::new());
         self.heap = old_heap.into_iter()
                             .filter(|item| !peers.contains(&item.node))
                             .collect();
-        self.sort();
     }
 
-    pub fn get_node(&self, id: Id) -> Option<&Node> {
+    pub fn get_node(&self, id: Id) -> Option<Node> {
         self.heap
             .iter()
             .find(|item| item.node.id == id)
-            .map(|item| &item.node)
+            .map(|item| item.node)
     }
 
     pub fn push(&mut self, node: Node) {
         if !self.contains(&node) {
             let dist = self.node.dist_to(&node);
             self.heap.push(NodeHeapItem { dist, node });
-            self.sort();
         }
     }
 
@@ -90,7 +103,6 @@ impl NodeHeap {
                 self.heap.push(NodeHeapItem { dist, node: *node });
             }
         }
-        self.sort();
     }
 
     pub fn pop(&mut self) -> Option<Node> {
@@ -110,35 +122,34 @@ impl NodeHeap {
         self.contacted.insert(node.id);
     }
 
-    fn sort(&mut self) {
-        self.heap
-            .sort_by(|a, b| b.dist
-                             .cmp(&a.dist)
-                             .then_with(|| a.node.cmp(&b.node)));
+    pub fn closest(&self) -> Vec<Node> {
+        let mut items = vec![];
+        let mut heap = self.heap.clone();
+        while let Some(item) = heap.pop() {
+            if items.len() < self.max_size {
+                items.push(item.node);
+            }
+        }
+        items
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&Node> {
-        self.heap
-            .iter()
-            .rev()
-            .take(self.max_size)
-            .map(|item| &item.node)
-    }
-
-    pub fn get_uncontacted(&self) -> Vec<&Node> {
-        self.iter()
+    pub fn get_uncontacted(&self) -> Vec<Node> {
+        self.closest()
+            .into_iter()
             .filter(|item| !self.contacted.contains(&item.id))
             .collect()
     }
 
     pub fn have_contacted_all(&self) -> bool {
-        self.iter()
+        self.closest()
+            .iter()
             .find(|item| !self.contacted.contains(&item.id))
             .is_none()
     }
 
     pub fn get_ids(&self) -> Vec<Id> {
-        self.iter()
+        self.closest()
+            .iter()
             .map(|node| node.id)
             .collect()
     }
@@ -201,7 +212,7 @@ mod heap_test {
     fn pop() {
         let id = [0; 20].into();
         let addr = "127.0.0.1".parse().unwrap();
-        let mut heap = build_heap(id, addr,4);
+        let mut heap = build_heap(id, addr, 4);
         let expected = Some(Node::new(id.at_dist(1), addr, 1201));
         assert_eq!(expected, heap.pop());
     }
