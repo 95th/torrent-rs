@@ -1,3 +1,5 @@
+#![feature(async_await)]
+
 #[deny(unsafe_code)]
 pub mod id;
 
@@ -12,3 +14,9 @@ pub mod routing;
 
 #[deny(unsafe_code)]
 pub mod server;
+
+#[deny(unsafe_code)]
+pub mod storage;
+
+#[deny(unsafe_code)]
+pub mod protocol;

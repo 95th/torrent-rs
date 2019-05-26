@@ -1,9 +1,13 @@
-use crate::id::Id;
 use crate::node::Node;
+use crate::storage::ForgetfulStorage;
 
-struct Server {
-    ksize: u8,
+pub struct Server {
+    ksize: usize,
     alpha: u8,
     node: Node,
+    storage: ForgetfulStorage
 }
 
+impl Server {
+    pub async fn listen(&self) {}
+}

@@ -9,7 +9,7 @@ use crate::id::Id;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Node {
-    id: Id,
+    pub(crate) id: Id,
     addr: IpAddr,
     port: u16,
 }
@@ -19,16 +19,12 @@ impl Node {
         Node { id, addr, port }
     }
 
-    pub fn get_id(&self) -> &Id {
-        &self.id
-    }
-
     pub fn same_home_as(&self, other: &Node) -> bool {
         self.addr == other.addr && self.port == self.port
     }
 
     pub fn dist_to(&self, other: &Node) -> usize {
-        self.id.dist_to(other.id)
+        self.id.dist_to(&other.id)
     }
 
     pub fn socket_addr(&self) -> SocketAddr {

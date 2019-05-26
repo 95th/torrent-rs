@@ -34,11 +34,11 @@ impl Id {
            .skip(idx + 1)
            .for_each(|v| *v = 0xFF);
 
-        *self ^ Id(buf)
+        self ^ &Id(buf)
     }
 
-    pub fn dist_to(&self, to: Id) -> usize {
-        let node = *self ^ to;
+    pub fn dist_to(&self, to: &Id) -> usize {
+        let node = self ^ to;
         let mut zeros = 0;
 
         for byte in node.iter() {
@@ -103,10 +103,10 @@ impl DerefMut for Id {
     }
 }
 
-impl BitXor for Id {
+impl BitXor for &Id {
     type Output = Id;
 
-    fn bitxor(self, rhs: Id) -> Self::Output {
+    fn bitxor(self, rhs: &Id) -> Id {
         let mut buf = [0; SIZE];
         buf.iter_mut()
            .zip(self.iter().zip(rhs.iter()))
@@ -156,6 +156,6 @@ mod test {
     fn get_dist() {
         let id = Id([0; 20]);
         let far = id.at_dist(6);
-        assert_eq!(6, far.dist_to(id));
+        assert_eq!(6, far.dist_to(&id));
     }
 }
