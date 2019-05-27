@@ -20,7 +20,7 @@ impl Node {
     }
 
     pub fn same_home_as(&self, other: &Node) -> bool {
-        self.addr == other.addr && self.port == self.port
+        self.addr == other.addr && self.port == other.port
     }
 
     pub fn dist_to(&self, other: &Node) -> usize {
@@ -110,8 +110,7 @@ impl NodeHeap {
     pub fn contains(&self, node: &Node) -> bool {
         self.heap
             .iter()
-            .find(|item| &item.node == node)
-            .is_some()
+            .any(|item| &item.node == node)
     }
 
     pub fn mark_contacted(&mut self, node: &Node) {
@@ -152,6 +151,10 @@ impl NodeHeap {
 
     pub fn len(&self) -> usize {
         self.heap.len().min(self.max_size)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

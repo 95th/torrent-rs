@@ -7,7 +7,3 @@ pub struct Server {
     node: Node,
     storage: Storage
 }
-
-impl Server {
-    pub async fn listen(&self) {}
-}

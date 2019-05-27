@@ -35,8 +35,8 @@ impl Storage {
         let instant = Instant::now() - duration;
         self.map
             .iter()
-            .filter(|(_, (i, _))| i <= &instant)
-            .map(|(k, (_, _))| k.clone())
+            .filter(|(_, (i, _))| *i <= instant)
+            .map(|(k, _)| k.clone())
             .collect()
     }
 }

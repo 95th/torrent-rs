@@ -1,5 +1,3 @@
-#![feature(async_await)]
-
 #[deny(unsafe_code)]
 pub mod id;
 

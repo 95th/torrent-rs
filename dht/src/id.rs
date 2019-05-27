@@ -1,5 +1,4 @@
 use std::fmt;
-use std::io::Cursor;
 use std::ops::{BitXor, Deref, DerefMut};
 use std::str::FromStr;
 

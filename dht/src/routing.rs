@@ -5,12 +5,11 @@ use std::time::Instant;
 use crate::id::Id;
 use crate::node::Node;
 use crate::node::NodeHeap;
-use crate::protocol::Protocol;
 
 pub struct RoutingTable {
     node: Node,
     ksize: usize,
-    buckets: Vec<Bucket>
+    buckets: Vec<Bucket>,
 }
 
 impl RoutingTable {
@@ -109,7 +108,7 @@ pub struct Bucket {
     nodes: BTreeMap<Id, Node>,
     extra_nodes: BTreeMap<Id, Node>,
     ksize: usize,
-    last_updated: Instant
+    last_updated: Instant,
 }
 
 impl Bucket {
@@ -119,7 +118,7 @@ impl Bucket {
             nodes: BTreeMap::new(),
             extra_nodes: BTreeMap::new(),
             ksize,
-            last_updated: Instant::now()
+            last_updated: Instant::now(),
         }
     }
 
@@ -128,7 +127,10 @@ impl Bucket {
     }
 
     pub fn get_nodes(&self) -> Vec<Node> {
-        self.nodes.values().map(|n| *n).collect()
+        self.nodes
+            .values()
+            .cloned()
+            .collect()
     }
 
     pub fn split(&mut self) -> (Bucket, Bucket) {
@@ -137,7 +139,10 @@ impl Bucket {
         let mut left = Bucket::new(self.range.0, middle, self.ksize);
         let mut right = Bucket::new(middle.at_dist(1), self.range.1, self.ksize);
 
-        let nodes = self.nodes.values().chain(self.extra_nodes.values());
+        let nodes = self.nodes
+                        .values()
+                        .chain(self.extra_nodes
+                                   .values());
 
         for node in nodes {
             let bucket = if node.id <= middle { &mut left } else { &mut right };
@@ -148,9 +153,7 @@ impl Bucket {
     }
 
     pub fn add_node(&mut self, node: &Node) -> bool {
-        if self.nodes.contains_key(&node.id) {
-            self.nodes.insert(node.id, *node);
-        } else if self.nodes.len() < self.ksize {
+        if self.nodes.contains_key(&node.id) || self.nodes.len() < self.ksize {
             self.nodes.insert(node.id, *node);
         } else {
             self.extra_nodes.insert(node.id, *node);
@@ -202,6 +205,10 @@ impl Bucket {
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
 }
 
 struct TableIterator<'t> {
@@ -225,7 +232,7 @@ impl<'t> TableIterator<'t> {
             node_index: 0,
             left_bucket_index: bucket_index,
             right_bucket_index: bucket_index,
-            left: true
+            left: true,
         }
     }
 }
@@ -249,9 +256,9 @@ impl<'t> Iterator for TableIterator<'t> {
                 self.right_bucket_index += 1;
                 self.nodes = self.table.buckets[self.right_bucket_index].get_nodes();
                 self.left = true;
+            } else {
+                break;
             }
-
-            break;
         }
 
         None

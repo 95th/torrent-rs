@@ -1,5 +1,3 @@
-use rand::prelude::*;
-
 use crate::id::Id;
 use crate::node::Node;
 use crate::routing::RoutingTable;
