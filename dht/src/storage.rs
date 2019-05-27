@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::time::Duration;
 use std::time::Instant;
 
-pub struct ForgetfulStorage {
+pub struct Storage {
     map: HashMap<String, (Instant, String)>,
     ttl: Duration,
 }
 
-impl ForgetfulStorage {
+impl Storage {
     pub fn get(&mut self, key: &str) -> Option<&String> {
         self.cull();
         self.map.get(key).map(|(_, v)| v)

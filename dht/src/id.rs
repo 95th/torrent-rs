@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::Cursor;
 use std::ops::{BitXor, Deref, DerefMut};
 use std::str::FromStr;
 
@@ -15,6 +16,15 @@ impl Id {
         let mut buf = [0; SIZE];
         rand::thread_rng().fill_bytes(&mut buf);
         Id(buf)
+    }
+
+    pub fn ranged_random(range: &(Id, Id)) -> Id {
+        loop {
+            let new_id = Id::new();
+            if (range.0..=range.1).contains(&new_id) {
+                return new_id
+            }
+        }
     }
 
     pub fn at_dist(&self, bits: usize) -> Id {

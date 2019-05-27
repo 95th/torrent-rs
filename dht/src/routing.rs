@@ -9,16 +9,15 @@ use crate::protocol::Protocol;
 
 pub struct RoutingTable {
     node: Node,
-    protocol: Protocol,
     ksize: usize,
     buckets: Vec<Bucket>
 }
 
 impl RoutingTable {
-    pub fn new(node: Node, protocol: Protocol, ksize: usize) -> RoutingTable {
+    pub fn new(node: Node, ksize: usize) -> RoutingTable {
         let initial_bucket = Bucket::new([0; 20].into(), [0xFF; 20].into(), ksize);
         let buckets = vec![initial_bucket];
-        RoutingTable { node, protocol, ksize, buckets }
+        RoutingTable { node, ksize, buckets }
     }
 
     pub fn split_bucket(&mut self, index: usize) {
@@ -106,7 +105,7 @@ impl RoutingTable {
 
 
 pub struct Bucket {
-    range: (Id, Id),
+    pub(crate) range: (Id, Id),
     nodes: BTreeMap<Id, Node>,
     extra_nodes: BTreeMap<Id, Node>,
     ksize: usize,
