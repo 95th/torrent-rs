@@ -53,7 +53,6 @@ impl PartialOrd for NodeHeapItem {
 }
 
 pub struct NodeHeap {
-    // TODO: change it to priority queue
     heap: BinaryHeap<NodeHeapItem>,
     node: Node,
     contacted: HashSet<Id>,
