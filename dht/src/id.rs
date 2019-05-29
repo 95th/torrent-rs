@@ -3,8 +3,8 @@ use std::ops::{BitXor, Deref, DerefMut};
 use std::str::FromStr;
 
 use hex::ToHex;
-use rand::prelude::*;
 use num_bigint::{BigUint, RandBigInt};
+use rand::prelude::*;
 
 const SIZE: usize = 20;
 
@@ -31,7 +31,7 @@ impl Id {
     }
 
     pub fn at_dist(&self, bits: usize) -> Id {
-        assert_eq!(true, bits < SIZE * 8);
+        assert!(bits < SIZE * 8);
 
         let mut buf = [0; SIZE];
         let idx = (SIZE * 8 - bits) / 8;
@@ -144,7 +144,7 @@ mod test {
     fn does_not_parse() {
         let hash = "0000";
         let id: Result<Id, ParseError> = hash.parse();
-        assert_eq!(true, id.is_err());
+        assert!(id.is_err());
     }
 
     #[test]
@@ -174,16 +174,11 @@ mod test {
 
     #[test]
     fn rand() {
-        let lo = Id([0; 20]);
+        let lo = [0; 20].into();
+        let hi = [1; 20].into();
 
-        let mut buf = [0; 20];
-        buf[18] = 8;
-        let hi = Id(buf);
-
-        for _ in 0..10000 {
-            let random = Id::ranged_random(&(lo, hi));
-            assert_eq!(true, random >= lo);
-            assert_eq!(true, random <= hi);
-        }
+        let random = Id::ranged_random(&(lo, hi));
+        assert!(random >= lo);
+        assert!(random < hi);
     }
 }
