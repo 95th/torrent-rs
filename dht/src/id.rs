@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use hex::ToHex;
 use rand::prelude::*;
+use num_bigint::{BigUint, RandBigInt};
 
 const SIZE: usize = 20;
 
@@ -17,13 +18,16 @@ impl Id {
         Id(buf)
     }
 
+    /// Generate a random ID in given range of IDs
     pub fn ranged_random(range: &(Id, Id)) -> Id {
-        loop {
-            let new_id = Id::new();
-            if (range.0..=range.1).contains(&new_id) {
-                return new_id
-            }
-        }
+        let (lo, hi) = range;
+        let lo = BigUint::from_bytes_be(&lo.0);
+        let hi = BigUint::from_bytes_be(&hi.0);
+        let random = rand::thread_rng().gen_biguint_range(&lo, &hi)
+                                       .to_bytes_be();
+        let mut buf = [0; SIZE];
+        buf[SIZE - random.len()..].copy_from_slice(&random);
+        Id(buf)
     }
 
     pub fn at_dist(&self, bits: usize) -> Id {
@@ -32,7 +36,7 @@ impl Id {
         let mut buf = [0; SIZE];
         let idx = (SIZE * 8 - bits) / 8;
 
-        let clear_bits = 8 - (bits % 8);
+        let clear_bits = 8 - (bits % 8) as u8;
         let mut byte = 0xFFu8;
         if clear_bits < 8 {
             byte >>= clear_bits;
@@ -166,5 +170,20 @@ mod test {
         let id = Id([0; 20]);
         let far = id.at_dist(6);
         assert_eq!(6, far.dist_to(&id));
+    }
+
+    #[test]
+    fn rand() {
+        let lo = Id([0; 20]);
+
+        let mut buf = [0; 20];
+        buf[18] = 8;
+        let hi = Id(buf);
+
+        for _ in 0..10000 {
+            let random = Id::ranged_random(&(lo, hi));
+            assert_eq!(true, random >= lo);
+            assert_eq!(true, random <= hi);
+        }
     }
 }
