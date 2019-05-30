@@ -178,7 +178,7 @@ mod node_test {
         let port = 1234;
         let node = Node::new(Id::new(), addr, port);
         let expected: SocketAddr = "127.0.0.1:1234".parse().unwrap();
-        assert_eq!(expected, node.socket_addr());
+        assert_eq!(Some(expected), node.socket_addr());
     }
 }
 
