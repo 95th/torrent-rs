@@ -15,7 +15,7 @@ impl Id {
     pub fn new() -> Id {
         let mut buf = [0; SIZE];
         rand::thread_rng().fill_bytes(&mut buf);
-        Id(buf)
+        buf.into()
     }
 
     /// Generate a random ID in given range of IDs
@@ -27,7 +27,7 @@ impl Id {
                                        .to_bytes_be();
         let mut buf = [0; SIZE];
         buf[SIZE - random.len()..].copy_from_slice(&random);
-        Id(buf)
+        buf.into()
     }
 
     pub fn at_dist(&self, bits: usize) -> Id {
@@ -47,7 +47,7 @@ impl Id {
            .skip(idx + 1)
            .for_each(|v| *v = 0xFF);
 
-        self ^ &Id(buf)
+        self ^ &buf.into()
     }
 
     pub fn dist_to(&self, to: &Id) -> usize {
@@ -85,7 +85,7 @@ impl FromStr for Id {
 
         let mut buf = [0; SIZE];
         buf.copy_from_slice(s.as_bytes());
-        Ok(Id(buf))
+        Ok(buf.into())
     }
 }
 
@@ -124,7 +124,7 @@ impl BitXor for &Id {
         buf.iter_mut()
            .zip(self.iter().zip(rhs.iter()))
            .for_each(|(a, (b, c))| *a = b ^ c);
-        Id(buf)
+        buf.into()
     }
 }
 
