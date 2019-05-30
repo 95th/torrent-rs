@@ -10,32 +10,38 @@ use crate::id::Id;
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Node {
     pub(crate) id: Id,
-    addr: IpAddr,
-    port: u16,
+    addr: Option<(IpAddr, u16)>,
 }
 
 impl Node {
     pub fn new(id: Id, addr: IpAddr, port: u16) -> Node {
-        Node { id, addr, port }
+        Node { id, addr: Some((addr, port)) }
+    }
+
+    pub fn with_id(id: Id) -> Node {
+        Node { id, addr: None }
     }
 
     pub fn same_home_as(&self, other: &Node) -> bool {
-        self.addr == other.addr && self.port == other.port
+        self.addr == other.addr
     }
 
     pub fn dist_to(&self, other: &Node) -> usize {
         self.id.dist_to(&other.id)
     }
 
-    pub fn socket_addr(&self) -> SocketAddr {
-        SocketAddr::new(self.addr, self.port)
+    pub fn socket_addr(&self) -> Option<SocketAddr> {
+        match self.addr {
+            Some((addr, port)) => Some(SocketAddr::new(addr, port)),
+            None => None
+        }
     }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct NodeHeapItem {
     dist: usize,
-    node: Node
+    node: Node,
 }
 
 impl Ord for NodeHeapItem {
@@ -65,7 +71,7 @@ impl NodeHeap {
             node,
             heap: BinaryHeap::new(),
             contacted: HashSet::new(),
-            max_size
+            max_size,
         }
     }
 

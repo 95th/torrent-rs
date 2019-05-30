@@ -39,4 +39,11 @@ impl Storage {
             .map(|(k, _)| k.clone())
             .collect()
     }
+
+    pub fn iter(&mut self) -> impl Iterator<Item=(&String, &String)> {
+        self.cull();
+        self.map
+            .iter()
+            .map(|(k, (i, v))| (k, v))
+    }
 }
