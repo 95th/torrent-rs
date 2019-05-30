@@ -34,15 +34,30 @@ impl Protocol {
         }
 
         for (k, v) in self.storage.iter() {
-            let node = Node::with_id(digest(k));
+            let key_node = Node::with_id(digest(k));
+            let neighbours = self.router.find_neighbours(&key_node, None, None);
+
+            if neighbours.is_empty() {
+                // TODO: call rpc store
+            } else {
+                let last = neighbours.last().unwrap().dist_to(&key_node);
+                let new_close = node.dist_to(&key_node) < last;
+                let first = neighbours.first().unwrap().dist_to(&key_node);
+                let this_closest = self.source_node.dist_to(&key_node) < first;
+
+                if new_close && this_closest {
+                    // TODO: call rpc store
+                }
+            }
         }
+        self.router.add_contact(&node);
     }
 }
 
 fn digest(text: &str) -> Id {
-    let mut hasher = Sha1::new();
-    hasher.input_str(text);
+    let mut sha1 = Sha1::new();
+    sha1.input_str(text);
     let mut buf = [0u8; 20];
-    hasher.result(&mut buf);
+    sha1.result(&mut buf);
     buf.into()
 }
