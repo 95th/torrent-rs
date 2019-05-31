@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::binary_heap::BinaryHeap;
+use std::collections::BinaryHeap;
 use std::collections::HashSet;
 use std::mem;
 use std::net::IpAddr;
