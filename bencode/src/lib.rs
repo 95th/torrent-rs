@@ -10,7 +10,7 @@ pub enum Error {
     ParseString,
     ParseList,
     ParseDict,
-    InvalidChar(u8)
+    InvalidChar(u8),
 }
 
 #[derive(Debug)]
@@ -55,7 +55,7 @@ impl TryConvert<i64> for Value {
     fn convert(self) -> Result<i64> {
         match self {
             Value::Int(n) => Ok(n),
-            _ => Err(Error::ParseInt)
+            _ => Err(Error::ParseInt),
         }
     }
 }
@@ -64,7 +64,7 @@ impl TryConvert<Vec<u8>> for Value {
     fn convert(self) -> Result<Vec<u8>> {
         match self {
             Value::String(v) => Ok(v),
-            _ => Err(Error::ParseBytes)
+            _ => Err(Error::ParseBytes),
         }
     }
 }
@@ -73,7 +73,7 @@ impl TryConvert<String> for Value {
     fn convert(self) -> Result<String> {
         match self {
             Value::String(v) => String::from_utf8(v).map_err(|_| Error::ParseString),
-            _ => Err(Error::ParseString)
+            _ => Err(Error::ParseString),
         }
     }
 }
@@ -82,7 +82,7 @@ impl TryConvert<Vec<Value>> for Value {
     fn convert(self) -> Result<Vec<Value>> {
         match self {
             Value::List(v) => Ok(v),
-            _ => Err(Error::ParseList)
+            _ => Err(Error::ParseList),
         }
     }
 }
@@ -91,7 +91,7 @@ impl TryConvert<BTreeMap<String, Value>> for Value {
     fn convert(self) -> Result<BTreeMap<String, Value>> {
         match self {
             Value::Dict(m) => Ok(m),
-            _ => Err(Error::ParseDict)
+            _ => Err(Error::ParseDict),
         }
     }
 }
@@ -99,12 +99,14 @@ impl TryConvert<BTreeMap<String, Value>> for Value {
 enum Token<'a> {
     B(&'a Value),
     S(&'a str),
-    E
+    E,
 }
 
 impl Value {
     pub fn encode<W>(&self, w: &mut W) -> io::Result<()>
-        where W: io::Write {
+    where
+        W: io::Write,
+    {
         use Token::*;
         use Value::*;
         let mut stack = vec![B(self)];
@@ -113,16 +115,16 @@ impl Value {
                 B(v) => match v {
                     Int(n) => {
                         write!(w, "i{}e", n)?;
-                    },
+                    }
                     String(v) => {
                         write!(w, "{}:", v.len())?;
                         w.write_all(&v)?;
-                    },
+                    }
                     List(v) => {
                         write!(w, "l")?;
                         stack.push(E);
                         stack.extend(v.iter().rev().map(|e| B(e)));
-                    },
+                    }
                     Dict(m) => {
                         write!(w, "d")?;
                         stack.push(E);
@@ -134,7 +136,7 @@ impl Value {
                 },
                 S(s) => {
                     write!(w, "{}:{}", s.len(), s)?;
-                },
+                }
                 E => {
                     write!(w, "e")?;
                 }
@@ -146,7 +148,7 @@ impl Value {
     pub fn decode<R: io::Read>(bytes: &mut R) -> Result<Value> {
         enum Kind {
             Dict(usize),
-            List(usize)
+            List(usize),
         }
 
         let mut command_stack = vec![];
@@ -161,7 +163,7 @@ impl Value {
                         }
                         vec.reverse();
                         value_stack.push(Value::List(vec));
-                    },
+                    }
                     Some(Kind::Dict(len)) => {
                         if (value_stack.len() - len) % 2 != 0 {
                             return Err(Error::ParseDict);
@@ -176,8 +178,8 @@ impl Value {
                             }
                         }
                         value_stack.push(Value::Dict(map))
-                    },
-                    None => return Err(Error::InvalidChar(b'e'))
+                    }
+                    None => return Err(Error::InvalidChar(b'e')),
                 },
                 Ok(v) => {
                     if command_stack.is_empty() && !value_stack.is_empty() {
@@ -195,9 +197,9 @@ impl Value {
                         b'i' => value_stack.push(Value::Int(read_until(bytes, b'e')?.convert()?)),
                         b'l' => command_stack.push(Kind::List(value_stack.len())),
                         b'd' => command_stack.push(Kind::Dict(value_stack.len())),
-                        c => return Err(Error::InvalidChar(c))
+                        c => return Err(Error::InvalidChar(c)),
                     }
-                },
+                }
                 Err(Error::EOF) => break,
                 Err(e) => return Err(e),
             }
@@ -226,7 +228,7 @@ fn read_until<R: io::Read>(r: &mut R, stop: u8) -> Result<Vec<u8>> {
     loop {
         let b = next_byte(r)?;
         if b == stop {
-            return Ok(v)
+            return Ok(v);
         }
         v.push(b)
     }

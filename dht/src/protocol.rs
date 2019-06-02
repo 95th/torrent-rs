@@ -2,8 +2,8 @@ use crate::id::Id;
 use crate::node::Node;
 use crate::routing::RoutingTable;
 use crate::storage::Storage;
-use crypto::sha1::Sha1;
 use crypto::digest::Digest;
+use crypto::sha1::Sha1;
 use std::rc::Rc;
 
 pub struct Protocol {

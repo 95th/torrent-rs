@@ -15,9 +15,14 @@ pub struct RoutingTable {
 
 impl RoutingTable {
     pub fn new(node: Rc<Node>, ksize: usize) -> RoutingTable {
-        let initial_bucket = Bucket::new(Rc::new([0; 20].into()), Rc::new([0xFF; 20].into()), ksize);
+        let initial_bucket =
+            Bucket::new(Rc::new([0; 20].into()), Rc::new([0xFF; 20].into()), ksize);
         let buckets = vec![initial_bucket];
-        RoutingTable { node, ksize, buckets }
+        RoutingTable {
+            node,
+            ksize,
+            buckets,
+        }
     }
 
     pub fn split_bucket(&mut self, index: usize) {
@@ -57,7 +62,12 @@ impl RoutingTable {
         }
     }
 
-    pub fn find_neighbours(&mut self, node: Rc<Node>, k: Option<usize>, exclude: Option<&Node>) -> Vec<Rc<Node>> {
+    pub fn find_neighbours(
+        &mut self,
+        node: Rc<Node>,
+        k: Option<usize>,
+        exclude: Option<&Node>,
+    ) -> Vec<Rc<Node>> {
         let k = k.unwrap_or(self.ksize);
 
         let mut heap = NodeHeap::new(node.clone(), k);
@@ -89,20 +99,13 @@ impl RoutingTable {
     }
 
     fn bucket_of(&self, node: &Node) -> &Bucket {
-        self.buckets
-            .iter()
-            .find(|b| node.id < b.upper)
-            .unwrap() // A node always has a bucket. So, unwrapping is OK.
+        self.buckets.iter().find(|b| node.id < b.upper).unwrap() // A node always has a bucket. So, unwrapping is OK.
     }
 
     fn bucket_of_mut(&mut self, node: &Node) -> &mut Bucket {
-        self.buckets
-            .iter_mut()
-            .find(|b| node.id < b.upper)
-            .unwrap() // A node always has a bucket. So, unwrapping is OK.
+        self.buckets.iter_mut().find(|b| node.id < b.upper).unwrap() // A node always has a bucket. So, unwrapping is OK.
     }
 }
-
 
 pub struct Bucket {
     pub(crate) lower: Rc<Id>,
@@ -130,10 +133,7 @@ impl Bucket {
     }
 
     pub fn get_nodes(&self) -> Vec<Rc<Node>> {
-        self.nodes
-            .values()
-            .cloned()
-            .collect()
+        self.nodes.values().cloned().collect()
     }
 
     pub fn split(&mut self) -> (Bucket, Bucket) {
@@ -142,14 +142,14 @@ impl Bucket {
         let mut left = Bucket::new(self.lower.clone(), middle.clone(), self.ksize);
         let mut right = Bucket::new(middle.at_dist(1), self.upper.clone(), self.ksize);
 
-        let nodes = self.nodes
-                        .values()
-                        .chain(self.extra_nodes
-                                   .values());
+        let nodes = self.nodes.values().chain(self.extra_nodes.values());
 
         for node in nodes {
-            let bucket = if node.id <= middle { &mut left } else { &mut right };
-            bucket.add_node(node.clone());
+            if node.id <= middle {
+                left.add_node(node.clone());
+            } else {
+                right.add_node(node.clone());
+            }
         }
 
         (left, right)
@@ -194,10 +194,7 @@ impl Bucket {
     }
 
     pub fn head(&self) -> Option<Rc<Node>> {
-        self.nodes
-            .values()
-            .next()
-            .cloned()
+        self.nodes.values().next().cloned()
     }
 
     pub fn depth(&self) -> usize {

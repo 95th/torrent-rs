@@ -16,7 +16,10 @@ pub struct Node {
 
 impl Node {
     pub fn new(id: Rc<Id>, addr: IpAddr, port: u16) -> Node {
-        Node { id, addr: Some((addr, port)) }
+        Node {
+            id,
+            addr: Some((addr, port)),
+        }
     }
 
     pub fn with_id(id: Rc<Id>) -> Node {
@@ -34,7 +37,7 @@ impl Node {
     pub fn socket_addr(&self) -> Option<SocketAddr> {
         match self.addr {
             Some((addr, port)) => Some(SocketAddr::new(addr, port)),
-            None => None
+            None => None,
         }
     }
 }
@@ -47,9 +50,10 @@ struct NodeHeapItem {
 
 impl Ord for NodeHeapItem {
     fn cmp(&self, other: &NodeHeapItem) -> Ordering {
-        other.dist
-             .cmp(&self.dist)
-             .then_with(|| self.node.cmp(&other.node))
+        other
+            .dist
+            .cmp(&self.dist)
+            .then_with(|| self.node.cmp(&other.node))
     }
 }
 
@@ -79,9 +83,10 @@ impl NodeHeap {
     pub fn remove_all(&mut self, nodes: &[Node]) {
         let peers: HashSet<&Node> = nodes.iter().collect();
         let old_heap = mem::replace(&mut self.heap, BinaryHeap::new());
-        self.heap = old_heap.into_iter()
-                            .filter(|item| !peers.contains(item.node.as_ref()))
-                            .collect();
+        self.heap = old_heap
+            .into_iter()
+            .filter(|item| !peers.contains(item.node.as_ref()))
+            .collect();
     }
 
     pub fn get_node(&self, id: &Id) -> Option<Rc<Node>> {
@@ -102,21 +107,20 @@ impl NodeHeap {
         for node in nodes {
             if !self.contains(node) {
                 let dist = self.node.dist_to(node);
-                self.heap.push(NodeHeapItem { dist, node: node.clone() });
+                self.heap.push(NodeHeapItem {
+                    dist,
+                    node: node.clone(),
+                });
             }
         }
     }
 
     pub fn pop(&mut self) -> Option<Rc<Node>> {
-        self.heap
-            .pop()
-            .map(|item| item.node.clone())
+        self.heap.pop().map(|item| item.node.clone())
     }
 
     pub fn contains(&self, node: &Node) -> bool {
-        self.heap
-            .iter()
-            .any(|item| item.node.as_ref() == node)
+        self.heap.iter().any(|item| item.node.as_ref() == node)
     }
 
     pub fn mark_contacted(&mut self, node: &Node) {
@@ -149,10 +153,7 @@ impl NodeHeap {
     }
 
     pub fn get_ids(&self) -> Vec<Rc<Id>> {
-        self.closest()
-            .iter()
-            .map(|node| node.id.clone())
-            .collect()
+        self.closest().iter().map(|node| node.id.clone()).collect()
     }
 
     pub fn len(&self) -> usize {

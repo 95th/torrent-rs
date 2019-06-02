@@ -23,10 +23,9 @@ impl Id {
     pub fn ranged_random(lo: &Id, hi: &Id) -> Id {
         let lo = BigUint::from_bytes_be(&lo.0);
         let hi = BigUint::from_bytes_be(&hi.0);
-        let random = rand::thread_rng().gen_biguint_range(&lo, &hi)
-                                       .to_bytes_be();
+        let gen = rand::thread_rng().gen_biguint_range(&lo, &hi).to_bytes_be();
         let mut buf = [0; SIZE];
-        buf[SIZE - random.len()..].copy_from_slice(&random);
+        buf[SIZE - gen.len()..].copy_from_slice(&gen);
         buf.into()
     }
 
@@ -43,9 +42,7 @@ impl Id {
         }
         buf[idx] = byte;
 
-        buf.iter_mut()
-           .skip(idx + 1)
-           .for_each(|v| *v = 0xFF);
+        buf.iter_mut().skip(idx + 1).for_each(|v| *v = 0xFF);
 
         Rc::new(self ^ &buf.into())
     }
@@ -80,7 +77,11 @@ impl FromStr for Id {
 
     fn from_str(s: &str) -> Result<Id, ParseError> {
         if s.len() != SIZE {
-            return Err(ParseError(format!("Incorrect length. Expected {}, actual: {}", SIZE, s.len())));
+            return Err(ParseError(format!(
+                "Incorrect length. Expected {}, actual: {}",
+                SIZE,
+                s.len()
+            )));
         }
 
         let mut buf = [0; SIZE];
@@ -122,8 +123,8 @@ impl BitXor for &Id {
     fn bitxor(self, rhs: &Id) -> Id {
         let mut buf = [0; SIZE];
         buf.iter_mut()
-           .zip(self.iter().zip(rhs.iter()))
-           .for_each(|(a, (b, c))| *a = b ^ c);
+            .zip(self.iter().zip(rhs.iter()))
+            .for_each(|(a, (b, c))| *a = b ^ c);
         buf.into()
     }
 }
