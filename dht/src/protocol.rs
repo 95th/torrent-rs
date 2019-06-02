@@ -4,17 +4,18 @@ use crate::routing::RoutingTable;
 use crate::storage::Storage;
 use crypto::sha1::Sha1;
 use crypto::digest::Digest;
+use std::rc::Rc;
 
 pub struct Protocol {
     router: RoutingTable,
     storage: Storage,
-    source_node: Node,
+    source_node: Rc<Node>,
 }
 
 impl Protocol {
-    pub fn new(source_node: Node, storage: Storage, ksize: usize) -> Protocol {
+    pub fn new(source_node: Rc<Node>, storage: Storage, ksize: usize) -> Protocol {
         Protocol {
-            router: RoutingTable::new(source_node, ksize),
+            router: RoutingTable::new(source_node.clone(), ksize),
             source_node,
             storage,
         }
@@ -28,14 +29,14 @@ impl Protocol {
             .collect()
     }
 
-    fn welcome_if_new(&mut self, node: &Node) {
-        if !self.router.is_new_node(node) {
+    fn welcome_if_new(&mut self, node: Rc<Node>) {
+        if !self.router.is_new_node(&node) {
             return;
         }
 
-        for (k, v) in self.storage.iter() {
-            let key_node = Node::with_id(digest(k));
-            let neighbours = self.router.find_neighbours(&key_node, None, None);
+        for (k, _) in self.storage.iter() {
+            let key_node = Rc::new(Node::with_id(Rc::new(digest(k))));
+            let neighbours = self.router.find_neighbours(key_node.clone(), None, None);
 
             if neighbours.is_empty() {
                 // TODO: call rpc store
@@ -50,7 +51,7 @@ impl Protocol {
                 }
             }
         }
-        self.router.add_contact(&node);
+        self.router.add_contact(node);
     }
 }
 

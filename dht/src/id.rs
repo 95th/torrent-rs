@@ -5,10 +5,11 @@ use std::str::FromStr;
 use hex::ToHex;
 use num_bigint::{BigUint, RandBigInt};
 use rand::prelude::*;
+use std::rc::Rc;
 
 const SIZE: usize = 20;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
 pub struct Id([u8; SIZE]);
 
 impl Id {
@@ -19,7 +20,7 @@ impl Id {
     }
 
     /// Generate a random ID in given range of IDs
-    pub fn ranged_random(range: &(Id, Id)) -> Id {
+    pub fn ranged_random(range: &(Rc<Id>, Rc<Id>)) -> Id {
         let (lo, hi) = range;
         let lo = BigUint::from_bytes_be(&lo.0);
         let hi = BigUint::from_bytes_be(&hi.0);

@@ -44,6 +44,6 @@ impl Storage {
         self.cull();
         self.map
             .iter()
-            .map(|(k, (i, v))| (k, v))
+            .map(|(k, (_i, v))| (k, v))
     }
 }

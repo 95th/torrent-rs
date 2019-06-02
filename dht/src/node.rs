@@ -6,19 +6,20 @@ use std::net::IpAddr;
 use std::net::SocketAddr;
 
 use crate::id::Id;
+use std::rc::Rc;
 
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Node {
-    pub(crate) id: Id,
+    pub(crate) id: Rc<Id>,
     addr: Option<(IpAddr, u16)>,
 }
 
 impl Node {
-    pub fn new(id: Id, addr: IpAddr, port: u16) -> Node {
+    pub fn new(id: Rc<Id>, addr: IpAddr, port: u16) -> Node {
         Node { id, addr: Some((addr, port)) }
     }
 
-    pub fn with_id(id: Id) -> Node {
+    pub fn with_id(id: Rc<Id>) -> Node {
         Node { id, addr: None }
     }
 
@@ -38,10 +39,10 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 struct NodeHeapItem {
     dist: usize,
-    node: Node,
+    node: Rc<Node>,
 }
 
 impl Ord for NodeHeapItem {
@@ -60,13 +61,13 @@ impl PartialOrd for NodeHeapItem {
 
 pub struct NodeHeap {
     heap: BinaryHeap<NodeHeapItem>,
-    node: Node,
-    contacted: HashSet<Id>,
+    node: Rc<Node>,
+    contacted: HashSet<Rc<Id>>,
     max_size: usize,
 }
 
 impl NodeHeap {
-    pub fn new(node: Node, max_size: usize) -> NodeHeap {
+    pub fn new(node: Rc<Node>, max_size: usize) -> NodeHeap {
         NodeHeap {
             node,
             heap: BinaryHeap::new(),
@@ -79,61 +80,61 @@ impl NodeHeap {
         let peers: HashSet<&Node> = nodes.iter().collect();
         let old_heap = mem::replace(&mut self.heap, BinaryHeap::new());
         self.heap = old_heap.into_iter()
-                            .filter(|item| !peers.contains(&item.node))
+                            .filter(|item| !peers.contains(item.node.as_ref()))
                             .collect();
     }
 
-    pub fn get_node(&self, id: Id) -> Option<Node> {
+    pub fn get_node(&self, id: &Id) -> Option<Rc<Node>> {
         self.heap
             .iter()
-            .find(|item| item.node.id == id)
-            .map(|item| item.node)
+            .find(|item| item.node.id.as_ref() == id)
+            .map(|item| item.node.clone())
     }
 
-    pub fn push(&mut self, node: Node) {
+    pub fn push(&mut self, node: Rc<Node>) {
         if !self.contains(&node) {
             let dist = self.node.dist_to(&node);
             self.heap.push(NodeHeapItem { dist, node });
         }
     }
 
-    pub fn push_all(&mut self, nodes: &[Node]) {
+    pub fn push_all(&mut self, nodes: &[Rc<Node>]) {
         for node in nodes {
             if !self.contains(node) {
                 let dist = self.node.dist_to(node);
-                self.heap.push(NodeHeapItem { dist, node: *node });
+                self.heap.push(NodeHeapItem { dist, node: node.clone() });
             }
         }
     }
 
-    pub fn pop(&mut self) -> Option<Node> {
+    pub fn pop(&mut self) -> Option<Rc<Node>> {
         self.heap
             .pop()
-            .map(|item| item.node)
+            .map(|item| item.node.clone())
     }
 
     pub fn contains(&self, node: &Node) -> bool {
         self.heap
             .iter()
-            .any(|item| &item.node == node)
+            .any(|item| item.node.as_ref() == node)
     }
 
     pub fn mark_contacted(&mut self, node: &Node) {
-        self.contacted.insert(node.id);
+        self.contacted.insert(node.id.clone());
     }
 
-    pub fn closest(&self) -> Vec<Node> {
+    pub fn closest(&self) -> Vec<Rc<Node>> {
         let mut items = vec![];
         let mut heap = self.heap.clone();
         while let Some(item) = heap.pop() {
             if items.len() < self.max_size {
-                items.push(item.node);
+                items.push(item.node.clone());
             }
         }
         items
     }
 
-    pub fn get_uncontacted(&self) -> Vec<Node> {
+    pub fn get_uncontacted(&self) -> Vec<Rc<Node>> {
         self.closest()
             .into_iter()
             .filter(|item| !self.contacted.contains(&item.id))
@@ -147,10 +148,10 @@ impl NodeHeap {
             .is_none()
     }
 
-    pub fn get_ids(&self) -> Vec<Id> {
+    pub fn get_ids(&self) -> Vec<Rc<Id>> {
         self.closest()
             .iter()
-            .map(|node| node.id)
+            .map(|node| node.id.clone())
             .collect()
     }
 
@@ -190,12 +191,13 @@ mod heap_test {
 
     use super::Node;
     use super::NodeHeap;
+    use std::rc::Rc;
 
     fn build_heap(id: Id, addr: IpAddr, max_size: usize) -> NodeHeap {
         let node = Node::new(id, addr, 1200);
         let mut nodes = vec![];
         for i in 1..=10 {
-            nodes.push(Node::new(id.at_dist(i), addr, 1200 + i as u16));
+            nodes.push(Rc::new(Node::new(id.at_dist(i), addr, 1200 + i as u16)));
         }
 
         let mut heap = NodeHeap::new(node, max_size);

@@ -1,4 +1,5 @@
 use std::collections::btree_map::BTreeMap;
+use std::rc::Rc;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -7,14 +8,14 @@ use crate::node::Node;
 use crate::node::NodeHeap;
 
 pub struct RoutingTable {
-    node: Node,
+    node: Rc<Node>,
     ksize: usize,
     buckets: Vec<Bucket>,
 }
 
 impl RoutingTable {
-    pub fn new(node: Node, ksize: usize) -> RoutingTable {
-        let initial_bucket = Bucket::new([0; 20].into(), [0xFF; 20].into(), ksize);
+    pub fn new(node: Rc<Node>, ksize: usize) -> RoutingTable {
+        let initial_bucket = Bucket::new(Rc::new([0; 20].into()), Rc::new([0xFF; 20].into()), ksize);
         let buckets = vec![initial_bucket];
         RoutingTable { node, ksize, buckets }
     }
@@ -41,10 +42,10 @@ impl RoutingTable {
         self.bucket_of(node).is_new_node(node)
     }
 
-    pub fn add_contact(&mut self, node: &Node) {
-        let index = self.bucket_index_of(node);
+    pub fn add_contact(&mut self, node: Rc<Node>) {
+        let index = self.bucket_index_of(&node);
         let bucket = &mut self.buckets[index];
-        if bucket.add_node(node) {
+        if bucket.add_node(node.clone()) {
             return;
         }
 
@@ -56,11 +57,11 @@ impl RoutingTable {
         }
     }
 
-    pub fn find_neighbours(&mut self, node: &Node, k: Option<usize>, exclude: Option<&Node>) -> Vec<Node> {
+    pub fn find_neighbours(&mut self, node: Rc<Node>, k: Option<usize>, exclude: Option<&Node>) -> Vec<Rc<Node>> {
         let k = k.unwrap_or(self.ksize);
 
-        let mut heap = NodeHeap::new(*node, k);
-        for neighbour in TableIterator::new(self, node) {
+        let mut heap = NodeHeap::new(node.clone(), k);
+        for neighbour in TableIterator::new(self, node.clone()) {
             if let Some(exclude) = exclude {
                 if neighbour.same_home_as(exclude) {
                     continue;
@@ -104,15 +105,15 @@ impl RoutingTable {
 
 
 pub struct Bucket {
-    pub(crate) range: (Id, Id),
-    nodes: BTreeMap<Id, Node>,
-    extra_nodes: BTreeMap<Id, Node>,
+    pub(crate) range: (Rc<Id>, Rc<Id>),
+    nodes: BTreeMap<Rc<Id>, Rc<Node>>,
+    extra_nodes: BTreeMap<Rc<Id>, Rc<Node>>,
     ksize: usize,
     last_updated: Instant,
 }
 
 impl Bucket {
-    pub fn new(lower: Id, upper: Id, ksize: usize) -> Bucket {
+    pub fn new(lower: Rc<Id>, upper: Rc<Id>, ksize: usize) -> Bucket {
         Bucket {
             range: (lower, upper),
             nodes: BTreeMap::new(),
@@ -126,7 +127,7 @@ impl Bucket {
         self.last_updated = Instant::now();
     }
 
-    pub fn get_nodes(&self) -> Vec<Node> {
+    pub fn get_nodes(&self) -> Vec<Rc<Node>> {
         self.nodes
             .values()
             .cloned()
@@ -135,9 +136,9 @@ impl Bucket {
 
     pub fn split(&mut self) -> (Bucket, Bucket) {
         let distance = self.range.0.dist_to(&self.range.1);
-        let middle = self.range.0.at_dist(distance / 2);
-        let mut left = Bucket::new(self.range.0, middle, self.ksize);
-        let mut right = Bucket::new(middle.at_dist(1), self.range.1, self.ksize);
+        let middle = Rc::new(self.range.0.at_dist(distance / 2));
+        let mut left = Bucket::new(self.range.0.clone(), middle.clone(), self.ksize);
+        let mut right = Bucket::new(Rc::new(middle.at_dist(1)), self.range.1.clone(), self.ksize);
 
         let nodes = self.nodes
                         .values()
@@ -146,24 +147,24 @@ impl Bucket {
 
         for node in nodes {
             let bucket = if node.id <= middle { &mut left } else { &mut right };
-            bucket.add_node(node);
+            bucket.add_node(node.clone());
         }
 
         (left, right)
     }
 
-    pub fn add_node(&mut self, node: &Node) -> bool {
+    pub fn add_node(&mut self, node: Rc<Node>) -> bool {
         if self.nodes.contains_key(&node.id) || self.nodes.len() < self.ksize {
-            self.nodes.insert(node.id, *node);
+            self.nodes.insert(node.id.clone(), node.clone());
         } else {
-            self.extra_nodes.insert(node.id, *node);
+            self.extra_nodes.insert(node.id.clone(), node.clone());
             return false;
         }
         true
     }
 
-    pub fn get_node(&self, id: &Id) -> Option<&Node> {
-        self.nodes.get(id)
+    pub fn get_node(&self, id: &Id) -> Option<Rc<Node>> {
+        self.nodes.get(id).cloned()
     }
 
     pub fn remove_node(&mut self, node: &Node) {
@@ -173,7 +174,7 @@ impl Bucket {
             self.nodes.remove(&node.id);
 
             let key = match self.extra_nodes.keys().next() {
-                Some(key) => *key,
+                Some(key) => key.clone(),
                 None => return,
             };
 
@@ -190,15 +191,18 @@ impl Bucket {
         node.id >= self.range.0 && node.id <= self.range.1
     }
 
-    pub fn head(&self) -> Option<&Node> {
-        self.nodes.values().next()
+    pub fn head(&self) -> Option<Rc<Node>> {
+        self.nodes
+            .values()
+            .next()
+            .cloned()
     }
 
     pub fn depth(&self) -> usize {
         let origin = Id::from([0xFF; 20]);
         self.nodes
             .values()
-            .map(|n| n.id)
+            .map(|n| n.id.clone())
             .fold(0, |acc, id| origin.dist_to(&id).max(acc))
     }
 
@@ -213,8 +217,8 @@ impl Bucket {
 
 struct TableIterator<'t> {
     table: &'t mut RoutingTable,
-    start: &'t Node,
-    nodes: Vec<Node>,
+    start: Rc<Node>,
+    nodes: Vec<Rc<Node>>,
     node_index: usize,
     left_bucket_index: usize,
     right_bucket_index: usize,
@@ -222,8 +226,8 @@ struct TableIterator<'t> {
 }
 
 impl<'t> TableIterator<'t> {
-    fn new(table: &'t mut RoutingTable, start: &'t Node) -> TableIterator<'t> {
-        let bucket_index = table.bucket_index_of(start);
+    fn new(table: &'t mut RoutingTable, start: Rc<Node>) -> TableIterator<'t> {
+        let bucket_index = table.bucket_index_of(&start);
         let nodes = table.buckets[bucket_index].get_nodes();
         TableIterator {
             table,
@@ -237,14 +241,14 @@ impl<'t> TableIterator<'t> {
     }
 }
 
-impl<'t> Iterator for TableIterator<'t> {
-    type Item = Node;
+impl Iterator for TableIterator<'_> {
+    type Item = Rc<Node>;
 
-    fn next(&mut self) -> Option<Node> {
+    fn next(&mut self) -> Option<Rc<Node>> {
         loop {
             if let Some(v) = self.nodes.get(self.node_index) {
                 self.node_index += 1;
-                return Some(*v);
+                return Some(v.clone());
             }
 
             self.node_index = 0;
