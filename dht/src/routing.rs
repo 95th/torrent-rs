@@ -83,7 +83,7 @@ impl RoutingTable {
         self.buckets
             .iter()
             .enumerate()
-            .find(|(_, b)| node.id < b.range.1)
+            .find(|(_, b)| node.id < b.upper)
             .map(|(i, _)| i)
             .unwrap() // A node always has a bucket. So, unwrapping is OK.
     }
@@ -91,21 +91,22 @@ impl RoutingTable {
     fn bucket_of(&self, node: &Node) -> &Bucket {
         self.buckets
             .iter()
-            .find(|b| node.id < b.range.1)
+            .find(|b| node.id < b.upper)
             .unwrap() // A node always has a bucket. So, unwrapping is OK.
     }
 
     fn bucket_of_mut(&mut self, node: &Node) -> &mut Bucket {
         self.buckets
             .iter_mut()
-            .find(|b| node.id < b.range.1)
+            .find(|b| node.id < b.upper)
             .unwrap() // A node always has a bucket. So, unwrapping is OK.
     }
 }
 
 
 pub struct Bucket {
-    pub(crate) range: (Rc<Id>, Rc<Id>),
+    pub(crate) lower: Rc<Id>,
+    pub(crate) upper: Rc<Id>,
     nodes: BTreeMap<Rc<Id>, Rc<Node>>,
     extra_nodes: BTreeMap<Rc<Id>, Rc<Node>>,
     ksize: usize,
@@ -115,7 +116,8 @@ pub struct Bucket {
 impl Bucket {
     pub fn new(lower: Rc<Id>, upper: Rc<Id>, ksize: usize) -> Bucket {
         Bucket {
-            range: (lower, upper),
+            lower,
+            upper,
             nodes: BTreeMap::new(),
             extra_nodes: BTreeMap::new(),
             ksize,
@@ -135,10 +137,10 @@ impl Bucket {
     }
 
     pub fn split(&mut self) -> (Bucket, Bucket) {
-        let distance = self.range.0.dist_to(&self.range.1);
-        let middle = Rc::new(self.range.0.at_dist(distance / 2));
-        let mut left = Bucket::new(self.range.0.clone(), middle.clone(), self.ksize);
-        let mut right = Bucket::new(Rc::new(middle.at_dist(1)), self.range.1.clone(), self.ksize);
+        let distance = self.lower.dist_to(&self.upper);
+        let middle = self.lower.at_dist(distance / 2);
+        let mut left = Bucket::new(self.lower.clone(), middle.clone(), self.ksize);
+        let mut right = Bucket::new(middle.at_dist(1), self.upper.clone(), self.ksize);
 
         let nodes = self.nodes
                         .values()
@@ -188,7 +190,7 @@ impl Bucket {
     }
 
     pub fn has_in_range(&self, node: &Node) -> bool {
-        node.id >= self.range.0 && node.id <= self.range.1
+        node.id >= self.lower && node.id <= self.upper
     }
 
     pub fn head(&self) -> Option<Rc<Node>> {

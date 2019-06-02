@@ -4,11 +4,11 @@ use std::collections::HashSet;
 use std::mem;
 use std::net::IpAddr;
 use std::net::SocketAddr;
-
-use crate::id::Id;
 use std::rc::Rc;
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+use crate::id::Id;
+
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Node {
     pub(crate) id: Rc<Id>,
     addr: Option<(IpAddr, u16)>,
@@ -168,6 +168,7 @@ impl NodeHeap {
 mod node_test {
     use std::net::IpAddr;
     use std::net::SocketAddr;
+    use std::rc::Rc;
 
     use crate::id::Id;
 
@@ -177,7 +178,7 @@ mod node_test {
     fn socket_addr() {
         let addr: IpAddr = "127.0.0.1".parse().unwrap();
         let port = 1234;
-        let node = Node::new(Id::new(), addr, port);
+        let node = Node::new(Rc::new(Id::new()), addr, port);
         let expected: SocketAddr = "127.0.0.1:1234".parse().unwrap();
         assert_eq!(Some(expected), node.socket_addr());
     }
@@ -186,20 +187,20 @@ mod node_test {
 #[cfg(test)]
 mod heap_test {
     use std::net::IpAddr;
+    use std::rc::Rc;
 
     use crate::id::Id;
 
     use super::Node;
     use super::NodeHeap;
-    use std::rc::Rc;
 
-    fn build_heap(id: Id, addr: IpAddr, max_size: usize) -> NodeHeap {
-        let node = Node::new(id, addr, 1200);
+    fn build_heap(id: Rc<Id>, addr: IpAddr, max_size: usize) -> NodeHeap {
         let mut nodes = vec![];
         for i in 1..=10 {
             nodes.push(Rc::new(Node::new(id.at_dist(i), addr, 1200 + i as u16)));
         }
 
+        let node = Rc::new(Node::new(id, addr, 1200));
         let mut heap = NodeHeap::new(node, max_size);
         heap.push_all(&nodes);
         heap
@@ -207,19 +208,19 @@ mod heap_test {
 
     #[test]
     fn ids() {
-        let id = [0; 20].into();
+        let id = Rc::new(Id::from([0; 20]));
         let addr = "127.0.0.1".parse().unwrap();
-        let heap = build_heap(id, addr, 4);
         let expected = vec![id.at_dist(1), id.at_dist(2), id.at_dist(3), id.at_dist(4)];
+        let heap = build_heap(id, addr, 4);
         assert_eq!(expected, heap.get_ids());
     }
 
     #[test]
     fn pop() {
-        let id = [0; 20].into();
+        let id = Rc::new(Id::from([0; 20]));
         let addr = "127.0.0.1".parse().unwrap();
+        let expected = Some(Rc::new(Node::new(id.at_dist(1), addr, 1201)));
         let mut heap = build_heap(id, addr, 4);
-        let expected = Some(Node::new(id.at_dist(1), addr, 1201));
         assert_eq!(expected, heap.pop());
     }
 }

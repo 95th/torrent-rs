@@ -25,7 +25,7 @@ impl Protocol {
         self.router
             .stale_buckets()
             .iter()
-            .map(|bucket| Id::ranged_random(&bucket.range))
+            .map(|bucket| Id::ranged_random(&bucket.lower, &bucket.upper))
             .collect()
     }
 

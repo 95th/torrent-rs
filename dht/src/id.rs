@@ -1,15 +1,15 @@
 use std::fmt;
 use std::ops::{BitXor, Deref, DerefMut};
+use std::rc::Rc;
 use std::str::FromStr;
 
 use hex::ToHex;
 use num_bigint::{BigUint, RandBigInt};
 use rand::prelude::*;
-use std::rc::Rc;
 
 const SIZE: usize = 20;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Id([u8; SIZE]);
 
 impl Id {
@@ -20,8 +20,7 @@ impl Id {
     }
 
     /// Generate a random ID in given range of IDs
-    pub fn ranged_random(range: &(Rc<Id>, Rc<Id>)) -> Id {
-        let (lo, hi) = range;
+    pub fn ranged_random(lo: &Id, hi: &Id) -> Id {
         let lo = BigUint::from_bytes_be(&lo.0);
         let hi = BigUint::from_bytes_be(&hi.0);
         let random = rand::thread_rng().gen_biguint_range(&lo, &hi)
@@ -31,7 +30,7 @@ impl Id {
         buf.into()
     }
 
-    pub fn at_dist(&self, bits: usize) -> Id {
+    pub fn at_dist(&self, bits: usize) -> Rc<Id> {
         assert!(bits < SIZE * 8);
 
         let mut buf = [0; SIZE];
@@ -48,7 +47,7 @@ impl Id {
            .skip(idx + 1)
            .for_each(|v| *v = 0xFF);
 
-        self ^ &buf.into()
+        Rc::new(self ^ &buf.into())
     }
 
     pub fn dist_to(&self, to: &Id) -> usize {
@@ -163,7 +162,7 @@ mod test {
         let mut buf = [0; 20];
         buf[19] = 0x3F;
         let expected = Id(buf);
-        assert_eq!(expected, far);
+        assert_eq!(&expected, far.as_ref());
     }
 
     #[test]
@@ -178,7 +177,7 @@ mod test {
         let lo = [0; 20].into();
         let hi = [1; 20].into();
 
-        let random = Id::ranged_random(&(lo, hi));
+        let random = Id::ranged_random(&lo, &hi);
         assert!(random >= lo);
         assert!(random < hi);
     }
