@@ -186,7 +186,7 @@ impl Value {
                         return Err(Error::EOF);
                     }
                     match v {
-                        d @ b'0'...b'9' => {
+                        d @ b'0'..=b'9' => {
                             let mut value = read_until(bytes, b':')?;
                             value.insert(0, d);
                             let len = value.convert()?;
