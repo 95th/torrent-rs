@@ -8,7 +8,12 @@ strategy:
       rustup_toolchain: nightly
 
 pool:
-  vmImage: 'ubuntu-latest'
+  Linux:
+    vmImage: ubuntu-latest
+  MacOS:
+    vmImage: macOS-10.13
+  Windows:
+    vmImage: vs2017-win201
 
 steps:
   - script: |
