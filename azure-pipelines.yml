@@ -1,19 +1,35 @@
 strategy:
   matrix:
-    stable:
+    Linux(stable):
+      vmImage: ubuntu-latest
       rustup_toolchain: stable
-    beta:
+    Linux(beta):
+      vmImage: ubuntu-latest
       rustup_toolchain: beta
-    nightly:
+    Linux(nightly):
+      vmImage: ubuntu-latest
+      rustup_toolchain: nightly
+    MacOS(stable):
+      vmImage: macOS-latest
+      rustup_toolchain: stable
+    MacOS(beta):
+      vmImage: macOS-latest
+      rustup_toolchain: beta
+    MacOS(nightly):
+      vmImage: macOS-latest
+      rustup_toolchain: nightly
+    Windows(stable):
+      vmImage: windows-latest
+      rustup_toolchain: stable
+    Windows(beta):
+      vmImage: windows-latest
+      rustup_toolchain: beta
+    Windows(nightly):
+      vmImage: windows-latest
       rustup_toolchain: nightly
 
 pool:
-  Linux:
-    vmImage: ubuntu-latest
-  MacOS:
-    vmImage: macOS-10.13
-  Windows:
-    vmImage: vs2017-win201
+  vmImage: $(vmImage)
 
 steps:
   - script: |
