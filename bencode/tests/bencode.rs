@@ -76,3 +76,12 @@ fn decode_dict() {
     assert_eq!(1, map.len());
     assert_eq!("world", map["hello"].as_str().unwrap());
 }
+
+#[test]
+fn decode_dict_2() {
+    let v: Value = "d3:cow3:moo4:spam4:eggse".parse().unwrap();
+    let map = v.as_map().unwrap();
+    assert_eq!(2, map.len());
+    assert_eq!("moo", map["cow"].as_str().unwrap());
+    assert_eq!("eggs", map["spam"].as_str().unwrap());
+}

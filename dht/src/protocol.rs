@@ -21,7 +21,7 @@ impl Protocol {
         }
     }
 
-    fn get_refresh_ids(&mut self) -> Vec<Id> {
+    pub fn get_refresh_ids(&mut self) -> Vec<Id> {
         self.router
             .stale_buckets()
             .iter()
@@ -29,7 +29,7 @@ impl Protocol {
             .collect()
     }
 
-    fn welcome_if_new(&mut self, node: Rc<Node>) {
+    pub fn welcome_if_new(&mut self, node: Rc<Node>) {
         if !self.router.is_new_node(&node) {
             return;
         }

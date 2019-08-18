@@ -95,15 +95,21 @@ impl RoutingTable {
             .enumerate()
             .find(|(_, b)| node.id < b.upper)
             .map(|(i, _)| i)
-            .unwrap() // A node always has a bucket. So, unwrapping is OK.
+            .expect("Node expected in bucket")
     }
 
     fn bucket_of(&self, node: &Node) -> &Bucket {
-        self.buckets.iter().find(|b| node.id < b.upper).unwrap() // A node always has a bucket. So, unwrapping is OK.
+        self.buckets
+            .iter()
+            .find(|b| node.id < b.upper)
+            .expect("Node expected in bucket")
     }
 
     fn bucket_of_mut(&mut self, node: &Node) -> &mut Bucket {
-        self.buckets.iter_mut().find(|b| node.id < b.upper).unwrap() // A node always has a bucket. So, unwrapping is OK.
+        self.buckets
+            .iter_mut()
+            .find(|b| node.id < b.upper)
+            .expect("Node expected in bucket")
     }
 }
 

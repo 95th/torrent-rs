@@ -2,21 +2,9 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::io;
 use std::io::Cursor;
+use error::{Error, Result}; 
 
-#[derive(Debug)]
-pub enum Error {
-    IO,
-    EOF,
-    ParseInt,
-    ParseBytes,
-    ParseString,
-    ParseList,
-    ParseDict,
-    InvalidChar(u8),
-    IncorrectType(String),
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
+pub mod error;
 
 #[derive(Debug)]
 pub enum Value {
