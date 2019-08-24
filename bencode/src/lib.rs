@@ -1,8 +1,8 @@
+use error::{Error, Result};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::io;
 use std::io::Cursor;
-use error::{Error, Result}; 
 
 pub mod error;
 
@@ -137,10 +137,7 @@ enum Token<'a> {
 }
 
 impl Value {
-    pub fn encode<W>(&self, w: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
+    pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         use Token::*;
         use Value::*;
         let mut stack = vec![B(self)];
