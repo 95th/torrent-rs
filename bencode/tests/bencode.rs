@@ -45,8 +45,8 @@ fn encode_dict() {
 #[test]
 fn decode_str() {
     let v: Value = "10:helloworld".parse().unwrap();
-    let s = v.as_str().unwrap();
-    assert_eq!("helloworld", s);
+    let s = v.as_str_bytes().unwrap();
+    assert_eq!(b"helloworld", s);
 }
 
 #[test]
@@ -62,11 +62,11 @@ fn decode_list() {
 
     let list = v.as_list().unwrap();
     assert_eq!(100, list[0].as_int().unwrap());
-    assert_eq!("helloworld", list[1].as_str().unwrap());
+    assert_eq!(b"helloworld", list[1].as_str_bytes().unwrap());
 
     let sublist = list[2].as_list().unwrap();
     assert_eq!(100, sublist[0].as_int().unwrap());
-    assert_eq!("24", sublist[1].as_str().unwrap());
+    assert_eq!(b"24", sublist[1].as_str_bytes().unwrap());
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn decode_dict() {
     let v: Value = "d5:hello5:worlde".parse().unwrap();
     let map = v.as_map().unwrap();
     assert_eq!(1, map.len());
-    assert_eq!("world", map["hello"].as_str().unwrap());
+    assert_eq!(b"world", map["hello"].as_str_bytes().unwrap());
 }
 
 #[test]
@@ -82,6 +82,6 @@ fn decode_dict_2() {
     let v: Value = "d3:cow3:moo4:spam4:eggse".parse().unwrap();
     let map = v.as_map().unwrap();
     assert_eq!(2, map.len());
-    assert_eq!("moo", map["cow"].as_str().unwrap());
-    assert_eq!("eggs", map["spam"].as_str().unwrap());
+    assert_eq!(b"moo", map["cow"].as_str_bytes().unwrap());
+    assert_eq!(b"eggs", map["spam"].as_str_bytes().unwrap());
 }

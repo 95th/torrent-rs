@@ -1,8 +1,8 @@
 use error::{Error, Result};
+
 use std::collections::BTreeMap;
 use std::fmt;
-use std::io;
-use std::io::Cursor;
+use std::io::{self, Cursor};
 
 pub mod error;
 
@@ -26,15 +26,21 @@ impl Value {
         }
     }
 
-    pub fn as_str(&self) -> Result<&str> {
+    pub fn as_str_bytes(&self) -> Result<&[u8]> {
         if let Value::String(v) = self {
-            std::str::from_utf8(v).map_err(|_| Error::ParseString)
+            Ok(v)
         } else {
             Err(Error::IncorrectType(format!(
                 "Expected: Value::String, Got: {}",
                 self
             )))
         }
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        let mut v = vec![];
+        self.encode(&mut v).unwrap();
+        v
     }
 
     pub fn as_list(&self) -> Result<&[Value]> {
@@ -59,14 +65,11 @@ impl Value {
         }
     }
 
-    pub fn into_string(self) -> Result<String> {
+    fn into_string(self) -> Option<String> {
         if let Value::String(v) = self {
-            String::from_utf8(v).map_err(|_| Error::ParseString)
+            String::from_utf8(v).ok()
         } else {
-            Err(Error::IncorrectType(format!(
-                "Expected: Value::String, Got: {}",
-                self
-            )))
+            None
         }
     }
 
@@ -92,22 +95,27 @@ impl Value {
         }
     }
 
+    #[inline(always)]
     pub fn with_int(v: i64) -> Value {
         Value::Int(v)
     }
 
+    #[inline(always)]
     pub fn with_string(s: String) -> Value {
         Value::String(s.into_bytes())
     }
 
+    #[inline(always)]
     pub fn with_str(s: &str) -> Value {
-        Value::String(s.as_bytes().iter().copied().collect())
+        Value::String(s.as_bytes().to_vec())
     }
 
+    #[inline(always)]
     pub fn with_list(list: Vec<Value>) -> Value {
         Value::List(list)
     }
 
+    #[inline(always)]
     pub fn with_map(map: BTreeMap<String, Value>) -> Value {
         Value::Dict(map)
     }
@@ -124,9 +132,7 @@ impl std::str::FromStr for Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut v = vec![];
-        self.encode(&mut v).unwrap();
-        write!(f, "{}", std::str::from_utf8(&v).unwrap())
+        write!(f, "{}", String::from_utf8_lossy(&self.to_vec()))
     }
 }
 
@@ -203,7 +209,7 @@ impl Value {
                         let mut map = BTreeMap::new();
                         while v_stack.len() > len {
                             let val = v_stack.pop().unwrap();
-                            if let Some(key) = v_stack.pop().and_then(|v| v.into_string().ok()) {
+                            if let Some(key) = v_stack.pop().and_then(|v| v.into_string()) {
                                 map.insert(key, val);
                             } else {
                                 return Err(Error::ParseDict);
