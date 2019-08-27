@@ -1,11 +1,11 @@
-use crate::detail;
-use bencode::Value;
 use std::collections::BTreeMap;
 use std::io::{self, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-type NodeId = Vec<u8>;
-type NodeIds = Vec<(IpAddr, NodeId)>;
+use bencode::Value;
+
+use crate::detail;
+use crate::node::NodeIds;
 
 #[derive(Default, Debug)]
 pub struct DhtState {
