@@ -38,9 +38,8 @@ impl DhtState {
             let mut list = vec![];
             for (addr, id) in &self.nids {
                 let mut buf = vec![];
-                let mut c = io::Cursor::new(&mut buf);
-                c.write_all(id).unwrap();
-                detail::write_address(&mut c, addr).unwrap();
+                buf.write_all(id).unwrap();
+                detail::write_address(&mut buf, addr).unwrap();
                 list.push(Value::String(buf));
             }
             dict.insert("node-id".to_owned(), Value::with_list(list));
@@ -130,8 +129,7 @@ fn save_nodes(nodes: &[SocketAddr]) -> io::Result<Value> {
 
     for node in nodes {
         let mut v = vec![];
-        let mut c = io::Cursor::new(&mut v);
-        detail::write_socket_addr(&mut c, node)?;
+        detail::write_socket_addr(&mut v, node)?;
         list.push(Value::String(v));
     }
 
