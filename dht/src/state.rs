@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::{self, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use bencode::Value;
+use bencode::{BorrowValue, Value};
 
 use crate::detail;
 use crate::node::{NodeId, NodeIds};
@@ -15,16 +15,16 @@ pub struct DhtState {
 }
 
 impl DhtState {
-    pub fn read(value: &Value) -> io::Result<DhtState> {
+    pub fn read(value: &BorrowValue) -> io::Result<DhtState> {
         let mut state = DhtState::default();
-        if let Value::Dict(dict) = value {
+        if let Some(dict) = value.as_dict() {
             state.nids = extract_node_ids(value, "node-id")?;
 
-            if let Some(Value::List(list)) = dict.get("nodes") {
+            if let Some(BorrowValue::List(list)) = dict.get("nodes") {
                 state.nodes = read_endpoint_list(list)?;
             }
 
-            if let Some(Value::List(list)) = dict.get("nodes6") {
+            if let Some(BorrowValue::List(list)) = dict.get("nodes6") {
                 state.nodes6 = read_endpoint_list(list)?;
             }
         }
@@ -53,7 +53,7 @@ impl DhtState {
             dict.insert("nodes6".to_owned(), save_nodes(&self.nodes6).unwrap());
         }
 
-        Value::with_map(dict)
+        Value::with_dict(dict)
     }
 
     pub fn clear(&mut self) {
@@ -68,25 +68,26 @@ impl DhtState {
     }
 }
 
-pub fn extract_node_ids(value: &Value, key: &str) -> io::Result<NodeIds> {
+pub fn extract_node_ids(value: &BorrowValue, key: &str) -> io::Result<NodeIds> {
     let mut ids = NodeIds::new();
-    let dict = match value {
-        Value::Dict(d) => d,
+
+    let dict = match value.as_dict() {
+        Some(d) => d,
         _ => return Ok(ids),
     };
 
     if let Some(v) = dict.get(key) {
-        if let Ok(old_nid) = v.as_str_bytes() {
+        if let Some(old_nid) = v.as_str_bytes() {
             if old_nid.len() == 20 {
                 ids.push((IpAddr::V4(Ipv4Addr::LOCALHOST), NodeId::from_bytes(old_nid)));
                 return Ok(ids);
             }
         }
 
-        if let Value::List(list) = v {
+        if let Some(list) = v.as_list() {
             for nid in list {
                 match nid.as_str_bytes() {
-                    Ok(s) if s.len() == 24 || s.len() == 36 => {
+                    Some(s) if s.len() == 24 || s.len() == 36 => {
                         let (id, addr) = s.split_at(20);
                         let mut c = io::Cursor::new(addr);
                         let addr = if addr.len() == 4 {
@@ -105,11 +106,11 @@ pub fn extract_node_ids(value: &Value, key: &str) -> io::Result<NodeIds> {
     Ok(ids)
 }
 
-fn read_endpoint_list(values: &[Value]) -> io::Result<Vec<SocketAddr>> {
+fn read_endpoint_list(values: &[BorrowValue]) -> io::Result<Vec<SocketAddr>> {
     let mut list = vec![];
     for v in values {
         match v.as_str_bytes() {
-            Ok(s) if s.len() == 6 || s.len() == 18 => {
+            Some(s) if s.len() == 6 || s.len() == 18 => {
                 let mut c = io::Cursor::new(s);
                 let addr = if s.len() == 6 {
                     detail::read_v4_socket_address(&mut c)?

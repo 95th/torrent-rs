@@ -211,7 +211,9 @@ impl DhtStorage for DefaultDhtStorage<'_> {
             &v.peers6
         };
 
-        let peer_map = peers.as_map_mut()?;
+        let peer_map = peers
+            .as_dict_mut()
+            .ok_or_else(|| bencode::Error::ParseDict)?;
 
         if !v.name.is_empty() {
             peer_map.insert(String::from("n"), Value::with_str(&v.name));
@@ -239,7 +241,11 @@ impl DhtStorage for DefaultDhtStorage<'_> {
                 to_pick /= 4;
             }
 
-            let pe = peer_map.get_mut("values").unwrap().as_list_mut()?;
+            let pe = peer_map
+                .get_mut("values")
+                .unwrap()
+                .as_list_mut()
+                .ok_or_else(|| bencode::Error::ParseList)?;
 
             let mut candidates = peersv.iter().filter(|v| !(no_seed && v.seed)).count();
             to_pick = to_pick.min(candidates);
@@ -274,8 +280,6 @@ impl DhtStorage for DefaultDhtStorage<'_> {
             addr: *requester,
             seed: false,
         };
-
-        let lower_bound_idx = detail::lower_bound(peersv, &requester_entry);
 
         Ok(false)
     }

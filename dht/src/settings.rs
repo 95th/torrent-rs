@@ -1,3 +1,4 @@
+use bencode::BorrowValue;
 use bencode::Value;
 use std::collections::BTreeMap;
 
@@ -89,14 +90,14 @@ impl DhtSettings {
         set_bool!(dict, ignore_dark_internet, self);
         set_bool!(dict, read_only, self);
 
-        Value::with_map(dict)
+        Value::with_dict(dict)
     }
 
-    pub fn read(node: &Value) -> DhtSettings {
+    pub fn read(node: &BorrowValue) -> DhtSettings {
         let mut settings = DhtSettings::default();
 
         let dict = match node {
-            Value::Dict(d) => d,
+            BorrowValue::Dict(d) => d,
             _ => return settings,
         };
 
