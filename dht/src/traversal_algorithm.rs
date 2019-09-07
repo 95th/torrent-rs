@@ -9,7 +9,7 @@ pub trait TraversalAlgorithm {
 
     fn done(&self);
 
-    fn finished(&self, observer: Arc<Observer>);
+    fn finished(&self, observer: Arc<dyn Observer>);
 
     fn id(&self) -> &NodeId;
 }

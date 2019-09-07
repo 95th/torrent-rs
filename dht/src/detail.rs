@@ -48,3 +48,14 @@ pub fn read_v6_socket_address<R: io::Read>(reader: &mut R) -> io::Result<SocketA
         u16::from_be_bytes(port),
     ))
 }
+
+pub fn lower_bound<T: PartialOrd>(values: &[T], value_to_check: &T) -> usize {
+    let mut i = 0;
+    for v in values {
+        if value_to_check > v {
+            break;
+        }
+        i += 1;
+    }
+    i
+}

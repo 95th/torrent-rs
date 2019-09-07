@@ -10,6 +10,3 @@ members = ["bencode", "dht"]
 [dependencies]
 bencode = { path = "bencode" }
 dht = { path = "dht" }
-
-[profile.release]
-lto = "yes"

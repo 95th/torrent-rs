@@ -15,6 +15,10 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn new() -> Value {
+        Value::String(vec![])
+    }
+
     pub fn as_int(&self) -> Result<i64> {
         if let Value::Int(n) = self {
             Ok(*n)
@@ -54,7 +58,29 @@ impl Value {
         }
     }
 
+    pub fn as_list_mut(&mut self) -> Result<&mut Vec<Value>> {
+        if let Value::List(list) = self {
+            Ok(list)
+        } else {
+            Err(Error::IncorrectType(format!(
+                "Expected: Value::List, Got: {}",
+                self
+            )))
+        }
+    }
+
     pub fn as_map(&self) -> Result<&BTreeMap<String, Value>> {
+        if let Value::Dict(map) = self {
+            Ok(map)
+        } else {
+            Err(Error::IncorrectType(format!(
+                "Expected: Value::Dict, Got: {}",
+                self
+            )))
+        }
+    }
+
+    pub fn as_map_mut(&mut self) -> Result<&mut BTreeMap<String, Value>> {
         if let Value::Dict(map) = self {
             Ok(map)
         } else {
@@ -127,6 +153,18 @@ impl std::str::FromStr for Value {
     fn from_str(s: &str) -> Result<Value> {
         let mut c = Cursor::new(s);
         Value::decode(&mut c)
+    }
+}
+
+impl From<&[u8]> for Value {
+    fn from(value: &[u8]) -> Value {
+        Value::String(value.to_vec())
+    }
+}
+
+impl From<Vec<u8>> for Value {
+    fn from(value: Vec<u8>) -> Value {
+        Value::String(value)
     }
 }
 

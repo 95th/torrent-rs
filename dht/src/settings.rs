@@ -3,38 +3,38 @@ use std::collections::BTreeMap;
 
 #[derive(Default)]
 pub struct DhtSettings {
-    max_peers_reply: i64,
-    search_branching: i64,
-    max_fail_count: i64,
-    max_torrents: i64,
-    max_dht_items: i64,
-    max_peers: i64,
-    max_torrent_search_reply: i64,
-    restrict_routing_ips: bool,
-    restrict_search_ips: bool,
-    extended_routing_table: bool,
-    aggressive_lookups: bool,
-    privacy_lookups: bool,
-    enforce_node_id: bool,
-    ignore_dark_internet: bool,
-    block_timeout: i64,
-    block_ratelimit: i64,
-    read_only: bool,
-    item_lifetime: i64,
-    upload_rate_limit: i64,
-    sample_infohashes_interval: i64,
-    max_infohashes_sample_count: i64,
+    pub max_peers_reply: usize,
+    pub search_branching: usize,
+    pub max_fail_count: usize,
+    pub max_torrents: usize,
+    pub max_dht_items: usize,
+    pub max_peers: usize,
+    pub max_torrent_search_reply: usize,
+    pub restrict_routing_ips: bool,
+    pub restrict_search_ips: bool,
+    pub extended_routing_table: bool,
+    pub aggressive_lookups: bool,
+    pub privacy_lookups: bool,
+    pub enforce_node_id: bool,
+    pub ignore_dark_internet: bool,
+    pub block_timeout: usize,
+    pub block_ratelimit: usize,
+    pub read_only: bool,
+    pub item_lifetime: usize,
+    pub upload_rate_limit: usize,
+    pub sample_infohashes_interval: usize,
+    pub max_infohashes_sample_count: usize,
 }
 
 pub(crate) struct Settings {
-    dht_settings: DhtSettings,
-    prefer_verified_node_ids: bool,
+    pub dht_settings: DhtSettings,
+    pub prefer_verified_node_ids: bool,
 }
 
 macro_rules! read_int {
     ($settings: expr, $dict: expr, $key: ident) => {
         if let Some(value) = $dict.get(stringify!($key)) {
-            $settings.$key = value.as_int().unwrap();
+            $settings.$key = value.as_int().unwrap() as usize;
         }
     };
 }
@@ -49,7 +49,10 @@ macro_rules! read_bool {
 
 macro_rules! set_int {
     ($dict: expr, $key: ident, $settings: expr) => {
-        $dict.insert(stringify!($key).to_owned(), Value::with_int($settings.$key));
+        $dict.insert(
+            stringify!($key).to_owned(),
+            Value::with_int($settings.$key as i64),
+        );
     };
 }
 

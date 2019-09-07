@@ -4,6 +4,12 @@ version = "0.1.0"
 authors = ["95th <vargwin@gmail.com>"]
 edition = "2018"
 
+[features]
+abi_v1 = []
+default = ["abi_v1"]
+
 [dependencies]
 bencode = { path = "../bencode" }
 bitflags = "1.1"
+sha1 = "0.6.0"
+rand = "0.7"
