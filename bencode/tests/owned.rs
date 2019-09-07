@@ -9,6 +9,25 @@ macro_rules! assert_bytes_eq {
 }
 
 #[test]
+fn simple_test() {
+    let value: Value = "d1:ad1:bi1e1:c4:abcde1:di3ee".parse().unwrap();
+    match value {
+        Value::Dict(map) => {
+            let a = &map["a"];
+            match a {
+                Value::Dict(sub_map) => {
+                    assert!(sub_map["b"].is_int());
+                    assert!(sub_map["c"].is_string());
+                }
+                _ => panic!("Expected Dict"),
+            }
+            assert!(map["d"].is_int());
+        }
+        _ => panic!("Expected Dict"),
+    }
+}
+
+#[test]
 fn encode_str() {
     let s: Value = Value::with_str("Hello world");
     let mut w = vec![];
@@ -38,7 +57,7 @@ fn encode_list() {
 fn encode_dict() {
     let mut m = BTreeMap::new();
     m.insert(String::from("hello"), Value::with_str("world"));
-    let v = Value::with_map(m);
+    let v = Value::with_dict(m);
     assert_eq!("d5:hello5:worlde", v.to_string());
 }
 
@@ -72,7 +91,7 @@ fn decode_list() {
 #[test]
 fn decode_dict() {
     let v: Value = "d5:hello5:worlde".parse().unwrap();
-    let map = v.as_map().unwrap();
+    let map = v.as_dict().unwrap();
     assert_eq!(1, map.len());
     assert_eq!(b"world", map["hello"].as_str_bytes().unwrap());
 }
@@ -80,7 +99,7 @@ fn decode_dict() {
 #[test]
 fn decode_dict_2() {
     let v: Value = "d3:cow3:moo4:spam4:eggse".parse().unwrap();
-    let map = v.as_map().unwrap();
+    let map = v.as_dict().unwrap();
     assert_eq!(2, map.len());
     assert_eq!(b"moo", map["cow"].as_str_bytes().unwrap());
     assert_eq!(b"eggs", map["spam"].as_str_bytes().unwrap());

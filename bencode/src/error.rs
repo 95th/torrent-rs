@@ -11,7 +11,6 @@ pub enum Error {
     ParseList,
     ParseDict,
     InvalidChar(u8),
-    IncorrectType(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -38,7 +37,6 @@ impl From<Error> for io::Error {
             InvalidChar(v) => {
                 io::Error::new(io::ErrorKind::InvalidData, format!("Unexpected {}", v))
             }
-            IncorrectType(s) => io::Error::new(io::ErrorKind::InvalidData, s),
         }
     }
 }
