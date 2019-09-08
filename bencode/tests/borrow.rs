@@ -11,20 +11,12 @@ macro_rules! assert_bytes_eq {
 #[test]
 fn simple_test() {
     let value = Value::decode(b"d1:ad1:bi1e1:c4:abcde1:di3ee").unwrap();
-    match value {
-        Value::Dict(map) => {
-            let a = &map["a"];
-            match a {
-                Value::Dict(sub_map) => {
-                    assert!(sub_map["b"].is_int());
-                    assert!(sub_map["c"].is_string());
-                }
-                _ => panic!("Expected Dict"),
-            }
-            assert!(map["d"].is_int());
-        }
-        _ => panic!("Expected Dict"),
-    }
+    let map = value.as_dict().unwrap();
+    let a = &map["a"];
+    let sub_map = a.as_dict().unwrap();
+    assert!(sub_map["b"].is_int());
+    assert!(sub_map["c"].is_string());
+    assert!(map["d"].is_int());
 }
 
 #[test]

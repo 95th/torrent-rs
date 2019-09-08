@@ -11,20 +11,12 @@ macro_rules! assert_bytes_eq {
 #[test]
 fn simple_test() {
     let value: Value = "d1:ad1:bi1e1:c4:abcde1:di3ee".parse().unwrap();
-    match value {
-        Value::Dict(map) => {
-            let a = &map["a"];
-            match a {
-                Value::Dict(sub_map) => {
-                    assert!(sub_map["b"].is_int());
-                    assert!(sub_map["c"].is_string());
-                }
-                _ => panic!("Expected Dict"),
-            }
-            assert!(map["d"].is_int());
-        }
-        _ => panic!("Expected Dict"),
-    }
+    let map = value.as_dict().unwrap();
+    let a = &map["a"];
+    let sub_map = a.as_dict().unwrap();
+    assert!(sub_map["b"].is_int());
+    assert!(sub_map["c"].is_string());
+    assert!(map["d"].is_int());
 }
 
 #[test]
@@ -103,4 +95,12 @@ fn decode_dict_2() {
     assert_eq!(2, map.len());
     assert_eq!(b"moo", map["cow"].as_str_bytes().unwrap());
     assert_eq!(b"eggs", map["spam"].as_str_bytes().unwrap());
+}
+
+#[test]
+fn borrow() {
+    let v: Value = "d3:cow3:moo4:spam4:eggse".parse().unwrap();
+    assert_eq!("d3:cow3:moo4:spam4:eggse", v.to_string());
+    let v = v.to_borrow();
+    assert_eq!("d3:cow3:moo4:spam4:eggse", v.to_string());
 }

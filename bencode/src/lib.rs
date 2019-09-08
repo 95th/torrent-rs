@@ -24,15 +24,17 @@ impl BorrowValue<'_> {
 }
 
 impl Value {
-    pub fn borrow(&self) -> BorrowValue {
+    pub fn to_borrow(&self) -> BorrowValue {
         use Value::*;
         match self {
             Int(n) => BorrowValue::Int(*n),
             String(buf) => BorrowValue::String(&buf),
-            List(list) => BorrowValue::List(list.iter().map(|v| v.borrow()).collect()),
-            Dict(dict) => {
-                BorrowValue::Dict(dict.iter().map(|(k, v)| (k.as_ref(), v.borrow())).collect())
-            }
+            List(list) => BorrowValue::List(list.iter().map(|v| v.to_borrow()).collect()),
+            Dict(dict) => BorrowValue::Dict(
+                dict.iter()
+                    .map(|(k, v)| (k.as_ref(), v.to_borrow()))
+                    .collect(),
+            ),
         }
     }
 }
