@@ -1,11 +1,15 @@
 [package]
 name = "dht"
 version = "0.1.0"
-authors = ["gurv-s <vargwin@gmail.com>"]
+authors = ["95th <vargwin@gmail.com>"]
 edition = "2018"
 
+[features]
+abi_v1 = []
+default = ["abi_v1"]
+
 [dependencies]
-rand = "0.6"
-num-bigint = { version = "0.2", features = ["rand"] }
-hex = "0.3"
-rust-crypto = "^0.2"
+bencode = { path = "../bencode" }
+bitflags = "1.1"
+sha1 = "0.6.0"
+rand = "0.7"
