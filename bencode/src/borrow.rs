@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::io;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum Value<'a> {
     String(&'a [u8]),
     Int(i64),
@@ -130,6 +130,58 @@ impl<'a> Value<'a> {
         v
     }
 
+    pub fn dict_find_int(&self, key: &str) -> Option<&Value<'a>> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_int() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn dict_find_int_value(&self, key: &str) -> Option<i64> {
+        self.dict_find_int(key)?.as_int()
+    }
+
+    pub fn dict_find_str(&self, key: &str) -> Option<&Value<'a>> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_string() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn dict_find_str_value(&self, key: &str) -> Option<&'a str> {
+        self.dict_find_str(key)?.as_str()
+    }
+
+    pub fn dict_find_list(&self, key: &str) -> Option<&Value<'a>> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_list() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn dict_find_list_value(&self, key: &str) -> Option<&[Value<'a>]> {
+        self.dict_find_list(key)?.as_list()
+    }
+
+    pub fn dict_find_dict(&self, key: &str) -> Option<&Value<'a>> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_dict() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
     pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         enum Token<'a> {
             B(&'a Value<'a>),
@@ -176,6 +228,14 @@ impl<'a> Value<'a> {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Value> {
+        Self::decode_with_limits(bytes, None, None)
+    }
+
+    pub fn decode_with_limits(
+        bytes: &[u8],
+        depth_limit: Option<usize>,
+        item_limit: Option<usize>,
+    ) -> Result<Value> {
         enum Kind {
             Dict(usize),
             List(usize),
@@ -184,6 +244,8 @@ impl<'a> Value<'a> {
         let mut c_stack = vec![];
         let mut v_stack = vec![];
         let mut rdr = Reader::new(bytes);
+        let mut items = 0;
+
         loop {
             match rdr.next_byte() {
                 Some(b'e') => match c_stack.pop() {
@@ -216,6 +278,17 @@ impl<'a> Value<'a> {
                     if c_stack.is_empty() && !v_stack.is_empty() {
                         return Err(Error::EOF);
                     }
+
+                    match depth_limit {
+                        Some(limit) if c_stack.len() > limit => return Err(Error::DepthLimit),
+                        _ => {}
+                    }
+
+                    match item_limit {
+                        Some(limit) if items > limit => return Err(Error::ItemLimit),
+                        _ => items += 1,
+                    }
+
                     match v {
                         _d @ b'0'..=b'9' => {
                             rdr.move_back();
@@ -293,13 +366,12 @@ impl<'a> Reader<'a> {
         }
 
         let slice = &self.buf[self.curr_idx..];
-        let slice = slice
+        let pos = slice
             .iter()
             .position(|&b| b == stop_byte)
-            .map(|p| &slice[..p])
-            .ok_or_else(|| Error::EOF)?;
-        self.curr_idx += slice.len() + 1; // Plus one to ignore the stop byte
-        Ok(slice)
+            .ok_or_else(|| Error::ExpectedChar(stop_byte))?;
+        self.curr_idx += pos + 1; // Plus one to ignore the stop byte
+        Ok(&slice[..pos])
     }
 
     fn read_exact(&mut self, len: usize) -> Result<&'a [u8]> {

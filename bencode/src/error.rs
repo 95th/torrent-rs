@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum Error {
     IO,
     EOF,
@@ -11,6 +11,9 @@ pub enum Error {
     ParseList,
     ParseDict,
     InvalidChar(u8),
+    ExpectedChar(u8),
+    DepthLimit,
+    ItemLimit,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -37,6 +40,13 @@ impl From<Error> for io::Error {
             InvalidChar(v) => {
                 io::Error::new(io::ErrorKind::InvalidData, format!("Unexpected {}", v))
             }
+            ExpectedChar(v) => {
+                io::Error::new(io::ErrorKind::InvalidData, format!("Expected {}", v))
+            }
+            DepthLimit => {
+                io::Error::new(io::ErrorKind::InvalidData, format!("Depth limit reached"))
+            }
+            ItemLimit => io::Error::new(io::ErrorKind::InvalidData, format!("Item limit reached")),
         }
     }
 }
