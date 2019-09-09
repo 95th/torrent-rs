@@ -8,7 +8,6 @@ macro_rules! assert_bytes_eq {
 macro_rules! tests {
     ($module: ident, $type: ty) => {
         mod $module {
-            use std::collections::BTreeMap;
 
             #[test]
             fn simple_test() {
