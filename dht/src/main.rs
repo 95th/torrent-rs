@@ -1,4 +1,4 @@
-use bencode::BorrowValue;
+use bencode::ValueRef;
 use dht::node::NodeId;
 use dht::state::DhtState;
 
@@ -12,7 +12,7 @@ fn main() {
     let value = state.save();
     println!("{}", value);
     let bytes = value.to_vec();
-    let borrowed = BorrowValue::decode(&bytes).unwrap();
+    let borrowed = ValueRef::decode(&bytes).unwrap();
 
     let state = DhtState::read(&borrowed).unwrap();
     println!("{:?}", state);

@@ -5,32 +5,32 @@ use std::fmt;
 use std::io;
 
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
-pub enum Value<'a> {
+pub enum ValueRef<'a> {
     String(&'a [u8]),
     Int(i64),
-    List(Vec<Value<'a>>),
-    Dict(BTreeMap<&'a str, Value<'a>>),
+    List(Vec<ValueRef<'a>>),
+    Dict(BTreeMap<&'a str, ValueRef<'a>>),
 }
 
-impl<'a> Value<'a> {
-    pub fn with_int(v: i64) -> Value<'static> {
-        Value::Int(v)
+impl<'a> ValueRef<'a> {
+    pub fn with_int(v: i64) -> ValueRef<'static> {
+        ValueRef::Int(v)
     }
 
-    pub fn with_str(s: &str) -> Value {
-        Value::String(s.as_bytes())
+    pub fn with_str(s: &str) -> ValueRef {
+        ValueRef::String(s.as_bytes())
     }
 
-    pub fn with_list(list: Vec<Value>) -> Value {
-        Value::List(list)
+    pub fn with_list(list: Vec<ValueRef>) -> ValueRef {
+        ValueRef::List(list)
     }
 
-    pub fn with_dict<'t>(dict: BTreeMap<&'t str, Value<'t>>) -> Value<'t> {
-        Value::Dict(dict)
+    pub fn with_dict<'t>(dict: BTreeMap<&'t str, ValueRef<'t>>) -> ValueRef<'t> {
+        ValueRef::Dict(dict)
     }
 
     pub fn is_string(&self) -> bool {
-        if let Value::String(_) = self {
+        if let ValueRef::String(_) = self {
             true
         } else {
             false
@@ -38,7 +38,7 @@ impl<'a> Value<'a> {
     }
 
     pub fn is_int(&self) -> bool {
-        if let Value::Int(_) = self {
+        if let ValueRef::Int(_) = self {
             true
         } else {
             false
@@ -46,7 +46,7 @@ impl<'a> Value<'a> {
     }
 
     pub fn is_list(&self) -> bool {
-        if let Value::List(_) = self {
+        if let ValueRef::List(_) = self {
             true
         } else {
             false
@@ -54,7 +54,7 @@ impl<'a> Value<'a> {
     }
 
     pub fn is_dict(&self) -> bool {
-        if let Value::Dict(_) = self {
+        if let ValueRef::Dict(_) = self {
             true
         } else {
             false
@@ -63,63 +63,63 @@ impl<'a> Value<'a> {
 
     pub fn as_int(&self) -> Option<i64> {
         match self {
-            Value::Int(n) => Some(*n),
+            ValueRef::Int(n) => Some(*n),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> Option<&'a str> {
         match self {
-            Value::String(buf) => std::str::from_utf8(buf).ok(),
+            ValueRef::String(buf) => std::str::from_utf8(buf).ok(),
             _ => None,
         }
     }
 
     pub fn as_str_bytes(&self) -> Option<&'a [u8]> {
         match self {
-            Value::String(buf) => Some(buf),
+            ValueRef::String(buf) => Some(buf),
             _ => None,
         }
     }
 
-    pub fn as_list(&self) -> Option<&[Value<'a>]> {
+    pub fn as_list(&self) -> Option<&[ValueRef<'a>]> {
         match self {
-            Value::List(list) => Some(list),
+            ValueRef::List(list) => Some(list),
             _ => None,
         }
     }
 
-    pub fn as_list_mut(&mut self) -> Option<&mut Vec<Value<'a>>> {
+    pub fn as_list_mut(&mut self) -> Option<&mut Vec<ValueRef<'a>>> {
         match self {
-            Value::List(list) => Some(list),
+            ValueRef::List(list) => Some(list),
             _ => None,
         }
     }
 
-    pub fn into_list(self) -> Option<Vec<Value<'a>>> {
+    pub fn into_list(self) -> Option<Vec<ValueRef<'a>>> {
         match self {
-            Value::List(list) => Some(list),
+            ValueRef::List(list) => Some(list),
             _ => None,
         }
     }
 
-    pub fn as_dict(&self) -> Option<&BTreeMap<&'a str, Value<'a>>> {
+    pub fn as_dict(&self) -> Option<&BTreeMap<&'a str, ValueRef<'a>>> {
         match self {
-            Value::Dict(dict) => Some(dict),
+            ValueRef::Dict(dict) => Some(dict),
             _ => None,
         }
     }
 
-    pub fn as_dict_mut(&mut self) -> Option<&mut BTreeMap<&'a str, Value<'a>>> {
+    pub fn as_dict_mut(&mut self) -> Option<&mut BTreeMap<&'a str, ValueRef<'a>>> {
         match self {
-            Value::Dict(dict) => Some(dict),
+            ValueRef::Dict(dict) => Some(dict),
             _ => None,
         }
     }
 
-    pub fn into_dict(self) -> Option<BTreeMap<&'a str, Value<'a>>> {
+    pub fn into_dict(self) -> Option<BTreeMap<&'a str, ValueRef<'a>>> {
         match self {
-            Value::Dict(dict) => Some(dict),
+            ValueRef::Dict(dict) => Some(dict),
             _ => None,
         }
     }
@@ -130,7 +130,7 @@ impl<'a> Value<'a> {
         v
     }
 
-    pub fn dict_find_int(&self, key: &str) -> Option<&Value<'a>> {
+    pub fn dict_find_int(&self, key: &str) -> Option<&ValueRef<'a>> {
         let dict = self.as_dict()?;
         let n = dict.get(key)?;
         if n.is_int() {
@@ -144,7 +144,7 @@ impl<'a> Value<'a> {
         self.dict_find_int(key)?.as_int()
     }
 
-    pub fn dict_find_str(&self, key: &str) -> Option<&Value<'a>> {
+    pub fn dict_find_str(&self, key: &str) -> Option<&ValueRef<'a>> {
         let dict = self.as_dict()?;
         let n = dict.get(key)?;
         if n.is_string() {
@@ -158,7 +158,7 @@ impl<'a> Value<'a> {
         self.dict_find_str(key)?.as_str()
     }
 
-    pub fn dict_find_list(&self, key: &str) -> Option<&Value<'a>> {
+    pub fn dict_find_list(&self, key: &str) -> Option<&ValueRef<'a>> {
         let dict = self.as_dict()?;
         let n = dict.get(key)?;
         if n.is_list() {
@@ -168,11 +168,11 @@ impl<'a> Value<'a> {
         }
     }
 
-    pub fn dict_find_list_value(&self, key: &str) -> Option<&[Value<'a>]> {
+    pub fn dict_find_list_value(&self, key: &str) -> Option<&[ValueRef<'a>]> {
         self.dict_find_list(key)?.as_list()
     }
 
-    pub fn dict_find_dict(&self, key: &str) -> Option<&Value<'a>> {
+    pub fn dict_find_dict(&self, key: &str) -> Option<&ValueRef<'a>> {
         let dict = self.as_dict()?;
         let n = dict.get(key)?;
         if n.is_dict() {
@@ -184,13 +184,13 @@ impl<'a> Value<'a> {
 
     pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         enum Token<'a> {
-            B(&'a Value<'a>),
+            B(&'a ValueRef<'a>),
             S(&'a str),
             E,
         }
 
         use Token::*;
-        use Value::*;
+        use ValueRef::*;
         let mut stack = vec![B(self)];
         while !stack.is_empty() {
             match stack.pop().unwrap() {
@@ -227,7 +227,7 @@ impl<'a> Value<'a> {
         Ok(())
     }
 
-    pub fn decode(bytes: &[u8]) -> Result<Value> {
+    pub fn decode(bytes: &[u8]) -> Result<ValueRef> {
         Self::decode_with_limits(bytes, None, None)
     }
 
@@ -235,7 +235,7 @@ impl<'a> Value<'a> {
         bytes: &[u8],
         depth_limit: Option<usize>,
         item_limit: Option<usize>,
-    ) -> Result<Value> {
+    ) -> Result<ValueRef> {
         enum Kind {
             Dict(usize),
             List(usize),
@@ -255,7 +255,7 @@ impl<'a> Value<'a> {
                             vec.push(v_stack.pop().unwrap());
                         }
                         vec.reverse();
-                        v_stack.push(Value::List(vec));
+                        v_stack.push(ValueRef::List(vec));
                     }
                     Some(Kind::Dict(len)) => {
                         if (v_stack.len() - len) % 2 != 0 {
@@ -270,7 +270,7 @@ impl<'a> Value<'a> {
                                 return Err(Error::ParseDict);
                             }
                         }
-                        v_stack.push(Value::Dict(map))
+                        v_stack.push(ValueRef::Dict(map))
                     }
                     None => return Err(Error::InvalidChar(b'e')),
                 },
@@ -294,11 +294,11 @@ impl<'a> Value<'a> {
                             rdr.move_back();
                             let len = to_int(rdr.read_until(b':')?)?;
                             let value = rdr.read_exact(len as usize)?;
-                            v_stack.push(Value::String(value));
+                            v_stack.push(ValueRef::String(value));
                         }
                         b'i' => {
                             let n = to_int(rdr.read_until(b'e')?)?;
-                            v_stack.push(Value::Int(n))
+                            v_stack.push(ValueRef::Int(n))
                         }
                         b'l' => c_stack.push(Kind::List(v_stack.len())),
                         b'd' => c_stack.push(Kind::Dict(v_stack.len())),
@@ -317,9 +317,9 @@ impl<'a> Value<'a> {
     }
 }
 
-impl<'a> From<&'a [u8]> for Value<'a> {
-    fn from(value: &[u8]) -> Value {
-        Value::String(value)
+impl<'a> From<&'a [u8]> for ValueRef<'a> {
+    fn from(value: &[u8]) -> ValueRef {
+        ValueRef::String(value)
     }
 }
 
@@ -330,7 +330,7 @@ fn to_int(b: &[u8]) -> Result<i64> {
         .ok_or_else(|| Error::ParseInt)
 }
 
-impl fmt::Display for Value<'_> {
+impl fmt::Display for ValueRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let v = self.to_vec();
         write!(f, "{}", String::from_utf8_lossy(&v))

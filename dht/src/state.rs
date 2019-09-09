@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::{self, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use bencode::{BorrowValue, Value};
+use bencode::{Value, ValueRef};
 
 use crate::detail;
 use crate::node::{NodeId, NodeIds};
@@ -15,16 +15,16 @@ pub struct DhtState {
 }
 
 impl DhtState {
-    pub fn read(value: &BorrowValue) -> io::Result<DhtState> {
+    pub fn read(value: &ValueRef) -> io::Result<DhtState> {
         let mut state = DhtState::default();
         if let Some(dict) = value.as_dict() {
             state.nids = extract_node_ids(value, "node-id")?;
 
-            if let Some(BorrowValue::List(list)) = dict.get("nodes") {
+            if let Some(ValueRef::List(list)) = dict.get("nodes") {
                 state.nodes = read_endpoint_list(list)?;
             }
 
-            if let Some(BorrowValue::List(list)) = dict.get("nodes6") {
+            if let Some(ValueRef::List(list)) = dict.get("nodes6") {
                 state.nodes6 = read_endpoint_list(list)?;
             }
         }
@@ -68,7 +68,7 @@ impl DhtState {
     }
 }
 
-pub fn extract_node_ids(value: &BorrowValue, key: &str) -> io::Result<NodeIds> {
+pub fn extract_node_ids(value: &ValueRef, key: &str) -> io::Result<NodeIds> {
     let mut ids = NodeIds::new();
 
     let dict = match value.as_dict() {
@@ -106,7 +106,7 @@ pub fn extract_node_ids(value: &BorrowValue, key: &str) -> io::Result<NodeIds> {
     Ok(ids)
 }
 
-fn read_endpoint_list(values: &[BorrowValue]) -> io::Result<Vec<SocketAddr>> {
+fn read_endpoint_list(values: &[ValueRef]) -> io::Result<Vec<SocketAddr>> {
     let mut list = vec![];
     for v in values {
         match v.as_str_bytes() {

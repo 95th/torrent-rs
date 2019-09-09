@@ -1,4 +1,4 @@
-use bencode::BorrowValue as Value;
+use bencode::ValueRef;
 use std::collections::BTreeMap;
 
 macro_rules! assert_bytes_eq {
@@ -10,7 +10,7 @@ macro_rules! assert_bytes_eq {
 
 #[test]
 fn simple_test() {
-    let value = Value::decode(b"d1:ad1:bi1e1:c4:abcde1:di3ee").unwrap();
+    let value = ValueRef::decode(b"d1:ad1:bi1e1:c4:abcde1:di3ee").unwrap();
     let map = value.as_dict().unwrap();
     let a = &map["a"];
     let sub_map = a.as_dict().unwrap();
@@ -21,7 +21,7 @@ fn simple_test() {
 
 #[test]
 fn encode_str() {
-    let s: Value = Value::with_str("Hello world");
+    let s = ValueRef::with_str("Hello world");
     let mut w = vec![];
     s.encode(&mut w).unwrap();
     assert_bytes_eq!(b"11:Hello world", w);
@@ -29,7 +29,7 @@ fn encode_str() {
 
 #[test]
 fn encode_i64() {
-    let s: Value = Value::with_int(100);
+    let s = ValueRef::with_int(100);
     let mut w = vec![];
     s.encode(&mut w).unwrap();
     assert_bytes_eq!(b"i100e", w);
@@ -37,10 +37,10 @@ fn encode_i64() {
 
 #[test]
 fn encode_list() {
-    let v = Value::with_list(vec![
-        Value::with_int(100),
-        Value::with_str("hello"),
-        Value::with_str("world"),
+    let v = ValueRef::with_list(vec![
+        ValueRef::with_int(100),
+        ValueRef::with_str("hello"),
+        ValueRef::with_str("world"),
     ]);
     assert_eq!("li100e5:hello5:worlde", v.to_string());
 }
@@ -48,28 +48,28 @@ fn encode_list() {
 #[test]
 fn encode_dict() {
     let mut m = BTreeMap::new();
-    m.insert("hello", Value::with_str("world"));
-    let v = Value::with_dict(m);
+    m.insert("hello", ValueRef::with_str("world"));
+    let v = ValueRef::with_dict(m);
     assert_eq!("d5:hello5:worlde", v.to_string());
 }
 
 #[test]
 fn decode_str() {
-    let v = Value::decode(b"10:helloworld").unwrap();
+    let v = ValueRef::decode(b"10:helloworld").unwrap();
     let s = v.as_str_bytes().unwrap();
     assert_eq!(b"helloworld", s);
 }
 
 #[test]
 fn decode_i64() {
-    let v = Value::decode(b"i100e").unwrap();
+    let v = ValueRef::decode(b"i100e").unwrap();
     let s: i64 = v.as_int().unwrap();
     assert_eq!(100, s);
 }
 
 #[test]
 fn decode_list() {
-    let v = Value::decode(b"li100e10:helloworldli100e2:24ee").unwrap();
+    let v = ValueRef::decode(b"li100e10:helloworldli100e2:24ee").unwrap();
 
     let list = v.as_list().unwrap();
     assert_eq!(100, list[0].as_int().unwrap());
@@ -82,7 +82,7 @@ fn decode_list() {
 
 #[test]
 fn decode_dict() {
-    let v = Value::decode(b"d5:hello5:worlde").unwrap();
+    let v = ValueRef::decode(b"d5:hello5:worlde").unwrap();
     let map = v.as_dict().unwrap();
     assert_eq!(1, map.len());
     assert_eq!(b"world", map["hello"].as_str_bytes().unwrap());
@@ -90,7 +90,7 @@ fn decode_dict() {
 
 #[test]
 fn decode_dict_2() {
-    let v = Value::decode(b"d3:cow3:moo4:spam4:eggse").unwrap();
+    let v = ValueRef::decode(b"d3:cow3:moo4:spam4:eggse").unwrap();
     let map = v.as_dict().unwrap();
     assert_eq!(2, map.len());
     assert_eq!(b"moo", map["cow"].as_str_bytes().unwrap());
@@ -99,7 +99,7 @@ fn decode_dict_2() {
 
 #[test]
 fn to_owned() {
-    let v = Value::decode(b"d3:cow3:moo4:spam4:eggse").unwrap();
+    let v = ValueRef::decode(b"d3:cow3:moo4:spam4:eggse").unwrap();
     assert_eq!("d3:cow3:moo4:spam4:eggse", v.to_string());
     let v = v.to_owned();
     assert_eq!("d3:cow3:moo4:spam4:eggse", v.to_string());
@@ -107,7 +107,7 @@ fn to_owned() {
 
 #[test]
 fn decode_str_02() {
-    let v = Value::decode(b"26:abcdefghijklmnopqrstuvwxyz").unwrap();
+    let v = ValueRef::decode(b"26:abcdefghijklmnopqrstuvwxyz").unwrap();
     let s = v.as_str().unwrap();
     assert_eq!("abcdefghijklmnopqrstuvwxyz", s);
 }
@@ -115,13 +115,13 @@ fn decode_str_02() {
 #[test]
 fn decode_large_str() {
     let s = String::from("1000000:") + &"x".repeat(1_000_000);
-    let v = Value::decode(s.as_bytes()).unwrap();
+    let v = ValueRef::decode(s.as_bytes()).unwrap();
     assert_eq!(&s[8..], v.as_str().unwrap());
 }
 
 #[test]
 fn decode_list_02() {
-    let v = Value::decode(b"li12345e3:aaae").unwrap();
+    let v = ValueRef::decode(b"li12345e3:aaae").unwrap();
     let list = v.as_list().unwrap();
     assert_eq!(2, list.len());
 
@@ -134,7 +134,7 @@ fn decode_list_02() {
 
 #[test]
 fn decode_dict_02() {
-    let v = Value::decode(b"d1:ai12453e1:b3:aaa1:c3:bbb1:X10:0123456789e").unwrap();
+    let v = ValueRef::decode(b"d1:ai12453e1:b3:aaa1:c3:bbb1:X10:0123456789e").unwrap();
     let dict = v.as_dict().unwrap();
     assert_eq!(4, dict.len());
 
@@ -153,19 +153,19 @@ fn decode_dict_02() {
 
 #[test]
 fn decode_dict_key_novalue() {
-    let e = Value::decode(b"d1:ai1e1:be").unwrap_err();
+    let e = ValueRef::decode(b"d1:ai1e1:be").unwrap_err();
     assert_eq!(bencode::Error::ParseDict, e);
 }
 
 #[test]
 fn decode_dict_non_str_key() {
-    let e = Value::decode(b"di5e1:ae").unwrap_err();
+    let e = ValueRef::decode(b"di5e1:ae").unwrap_err();
     assert_eq!(bencode::Error::ParseDict, e);
 }
 
 #[test]
 fn decode_dict_null_key() {
-    let v = Value::decode(b"d3:a\0bi1ee").unwrap();
+    let v = ValueRef::decode(b"d3:a\0bi1ee").unwrap();
     let dict = v.as_dict().unwrap();
     assert_eq!(1, dict.len());
 
@@ -174,7 +174,7 @@ fn decode_dict_null_key() {
 
 #[test]
 fn decode_dict_non_sorted_key_01() {
-    let v = Value::decode(b"d2:abi1e2:aai2ee").unwrap();
+    let v = ValueRef::decode(b"d2:abi1e2:aai2ee").unwrap();
     let dict = v.as_dict().unwrap();
     assert_eq!(2, dict.len());
 
@@ -184,19 +184,19 @@ fn decode_dict_non_sorted_key_01() {
 
 #[test]
 fn decode_64_bit_int() {
-    let v = Value::decode(b"i9223372036854775807e").unwrap();
+    let v = ValueRef::decode(b"i9223372036854775807e").unwrap();
     assert_eq!(9223372036854775807, v.as_int().unwrap());
 }
 
 #[test]
 fn decode_64_bit_int_negative() {
-    let v = Value::decode(b"i-9223372036854775807e").unwrap();
+    let v = ValueRef::decode(b"i-9223372036854775807e").unwrap();
     assert_eq!(-9223372036854775807, v.as_int().unwrap());
 }
 
 #[test]
 fn decode_int_invalid_digit() {
-    let e = Value::decode(b"i92337203t854775807e").unwrap_err();
+    let e = ValueRef::decode(b"i92337203t854775807e").unwrap_err();
     assert_eq!(bencode::Error::ParseInt, e);
 }
 
@@ -212,7 +212,7 @@ fn decode_invalid_encoding() {
         0x88, 0x7a, 0x8d, 0xc3, 0xd6, 0x31, 0x3a, 0x79, 0x31, 0xae, 0x71, 0x65, 0,
     ];
 
-    let e = Value::decode(&buf).unwrap_err();
+    let e = ValueRef::decode(&buf).unwrap_err();
     assert_eq!(bencode::Error::ParseDict, e);
 }
 
@@ -228,11 +228,11 @@ fn decode_depth_limit() {
         buf[i] = b'e';
     }
 
-    let e = Value::decode_with_limits(&buf, Some(1000), None).unwrap_err();
+    let e = ValueRef::decode_with_limits(&buf, Some(1000), None).unwrap_err();
     assert_eq!(bencode::Error::DepthLimit, e);
 
-    Value::decode_with_limits(&buf, Some(1024), None).unwrap();
-    Value::decode_with_limits(&buf, Some(1025), None).unwrap();
+    ValueRef::decode_with_limits(&buf, Some(1024), None).unwrap();
+    ValueRef::decode_with_limits(&buf, Some(1025), None).unwrap();
 }
 
 #[test]
@@ -245,28 +245,28 @@ fn decode_item_limit() {
     }
     buf[1023] = b'e';
 
-    let e = Value::decode_with_limits(&buf, None, Some(510)).unwrap_err();
+    let e = ValueRef::decode_with_limits(&buf, None, Some(510)).unwrap_err();
     assert_eq!(bencode::Error::ItemLimit, e);
 
-    Value::decode_with_limits(&buf, None, Some(511)).unwrap();
-    Value::decode_with_limits(&buf, None, Some(512)).unwrap();
+    ValueRef::decode_with_limits(&buf, None, Some(511)).unwrap();
+    ValueRef::decode_with_limits(&buf, None, Some(512)).unwrap();
 }
 
 #[test]
 fn decode_expected_colon_dict() {
-    let e = Value::decode(b"d1000").unwrap_err();
+    let e = ValueRef::decode(b"d1000").unwrap_err();
     assert_eq!(bencode::Error::ExpectedChar(b':'), e);
 }
 
 #[test]
 fn decode_empty_string() {
-    let e = Value::decode(b"").unwrap_err();
+    let e = ValueRef::decode(b"").unwrap_err();
     assert_eq!(bencode::Error::EOF, e);
 }
 
 #[test]
 fn decode_partial_string() {
-    let e = Value::decode(b"100:..").unwrap_err();
+    let e = ValueRef::decode(b"100:..").unwrap_err();
     assert_eq!(bencode::Error::EOF, e);
 }
 
@@ -280,7 +280,7 @@ fn decode_list_of_ints() {
     }
     buf.push(b'e');
 
-    let v = Value::decode(&buf).unwrap();
+    let v = ValueRef::decode(&buf).unwrap();
     let list = v.as_list().unwrap();
     assert_eq!(1000, list.len());
     for i in 0..1000 {
@@ -298,7 +298,7 @@ fn decode_dict_of_ints() {
     }
     buf.push(b'e');
 
-    let v = Value::decode(&buf).unwrap();
+    let v = ValueRef::decode(&buf).unwrap();
     let dict = v.as_dict().unwrap();
     assert_eq!(1000, dict.len());
     for i in 0..1000 {
@@ -309,7 +309,7 @@ fn decode_dict_of_ints() {
 
 #[test]
 fn decode_parse_int_overflow() {
-    let e = Value::decode(b"i9223372036854775808e").unwrap_err();
+    let e = ValueRef::decode(b"i9223372036854775808e").unwrap_err();
     assert_eq!(bencode::Error::ParseInt, e);
 }
 
@@ -323,7 +323,7 @@ fn decode_parse_length_overflow() {
         "d1:a9205357638345293824:11111",
     ];
     for s in arr.iter() {
-        let e = Value::decode(s.as_bytes()).unwrap_err();
+        let e = ValueRef::decode(s.as_bytes()).unwrap_err();
         assert_eq!(bencode::Error::EOF, e);
     }
 }
@@ -334,7 +334,7 @@ fn decode_dict_find_funs() {
     // b: string
     // c: list
     // d: dict
-    let v = Value::decode(b"d1:ai1e1:b3:foo1:cli1ei2ee1:dd1:xi1eee").unwrap();
+    let v = ValueRef::decode(b"d1:ai1e1:b3:foo1:cli1ei2ee1:dd1:xi1eee").unwrap();
     assert!(v.is_dict());
 
     assert_eq!(Some(1), v.dict_find_int_value("a"));

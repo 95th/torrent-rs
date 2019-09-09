@@ -101,6 +101,6 @@ fn decode_dict_2() {
 fn borrow() {
     let v: Value = "d3:cow3:moo4:spam4:eggse".parse().unwrap();
     assert_eq!("d3:cow3:moo4:spam4:eggse", v.to_string());
-    let v = v.to_borrow();
+    let v = v.as_ref();
     assert_eq!("d3:cow3:moo4:spam4:eggse", v.to_string());
 }
