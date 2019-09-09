@@ -188,6 +188,14 @@ impl Value {
     }
 
     pub fn decode<R: io::Read>(bytes: &mut R) -> Result<Value> {
+        Self::decode_with_limits(bytes, None, None)
+    }
+
+    pub fn decode_with_limits<R: io::Read>(
+        bytes: &mut R,
+        depth_limit: Option<usize>,
+        item_limit: Option<usize>,
+    ) -> Result<Value> {
         #[derive(Debug)]
         enum Kind {
             Dict(usize),
@@ -197,6 +205,8 @@ impl Value {
         let mut c_stack = vec![];
         let mut v_stack = vec![];
         let mut buf = [0];
+        let mut items = 0;
+
         loop {
             println!("e: {:?} {:?}", c_stack, v_stack);
             match next_byte(bytes, &mut buf) {
@@ -230,6 +240,17 @@ impl Value {
                     if c_stack.is_empty() && !v_stack.is_empty() {
                         return Err(Error::EOF);
                     }
+
+                    match depth_limit {
+                        Some(limit) if c_stack.len() > limit => return Err(Error::DepthLimit),
+                        _ => {}
+                    }
+
+                    match item_limit {
+                        Some(limit) if items > limit => return Err(Error::ItemLimit),
+                        _ => items += 1,
+                    }
+
                     match v {
                         d @ b'0'..=b'9' => {
                             let mut value = read_until(bytes, b':', &mut buf)?;
@@ -300,7 +321,7 @@ fn next_byte<R: io::Read>(r: &mut R, buf: &mut [u8; 1]) -> Result<u8> {
 fn read_until<R: io::Read>(r: &mut R, stop: u8, buf: &mut [u8; 1]) -> Result<Vec<u8>> {
     let mut v = vec![];
     loop {
-        let b = next_byte(r, buf)?;
+        let b = next_byte(r, buf).map_err(|_| Error::ExpectedChar(stop))?;
         if b == stop {
             return Ok(v);
         }

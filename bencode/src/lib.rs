@@ -1,20 +1,18 @@
-mod borrow;
 mod error;
-mod owned;
+mod value;
+mod value_ref;
 
-pub use crate::borrow::Value as BorrowValue;
 pub use crate::error::{Error, Result};
-pub use crate::owned::Value;
+pub use crate::value::Value;
+pub use crate::value_ref::ValueRef;
 
-impl BorrowValue<'_> {
+impl ValueRef<'_> {
     pub fn to_owned(&self) -> Value {
-        use BorrowValue::*;
-
         match self {
-            Int(n) => Value::Int(*n),
-            String(buf) => Value::String(buf.to_vec()),
-            List(list) => Value::List(list.iter().map(|v| v.to_owned()).collect()),
-            Dict(dict) => Value::Dict(
+            ValueRef::Int(n) => Value::Int(*n),
+            ValueRef::String(buf) => Value::String(buf.to_vec()),
+            ValueRef::List(list) => Value::List(list.iter().map(|v| v.to_owned()).collect()),
+            ValueRef::Dict(dict) => Value::Dict(
                 dict.iter()
                     .map(|(&k, v)| (k.to_owned(), v.to_owned()))
                     .collect(),
@@ -24,17 +22,14 @@ impl BorrowValue<'_> {
 }
 
 impl Value {
-    pub fn to_borrow(&self) -> BorrowValue {
-        use Value::*;
+    pub fn as_ref(&self) -> ValueRef {
         match self {
-            Int(n) => BorrowValue::Int(*n),
-            String(buf) => BorrowValue::String(&buf),
-            List(list) => BorrowValue::List(list.iter().map(|v| v.to_borrow()).collect()),
-            Dict(dict) => BorrowValue::Dict(
-                dict.iter()
-                    .map(|(k, v)| (k.as_ref(), v.to_borrow()))
-                    .collect(),
-            ),
+            Value::Int(n) => ValueRef::Int(*n),
+            Value::String(buf) => ValueRef::String(&buf),
+            Value::List(list) => ValueRef::List(list.iter().map(|v| v.as_ref()).collect()),
+            Value::Dict(dict) => {
+                ValueRef::Dict(dict.iter().map(|(k, v)| (k.as_ref(), v.as_ref())).collect())
+            }
         }
     }
 }

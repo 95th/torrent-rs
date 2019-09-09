@@ -1,5 +1,4 @@
-use bencode::BorrowValue;
-use bencode::Value;
+use bencode::{Value, ValueRef};
 use std::collections::BTreeMap;
 
 #[derive(Default)]
@@ -93,11 +92,11 @@ impl DhtSettings {
         Value::with_dict(dict)
     }
 
-    pub fn read(node: &BorrowValue) -> DhtSettings {
+    pub fn read(node: &ValueRef) -> DhtSettings {
         let mut settings = DhtSettings::default();
 
         let dict = match node {
-            BorrowValue::Dict(d) => d,
+            ValueRef::Dict(d) => d,
             _ => return settings,
         };
 
