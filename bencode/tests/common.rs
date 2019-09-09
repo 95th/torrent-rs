@@ -6,12 +6,13 @@ macro_rules! assert_bytes_eq {
 }
 
 macro_rules! tests {
-    ($module: ident, $type: ty) => {
+    ($module: ident, $type: tt) => {
         mod $module {
+            use bencode::$type;
 
             #[test]
             fn simple_test() {
-                let value = <$type>::decode(b"d1:ad1:bi1e1:c4:abcde1:di3ee").unwrap();
+                let value = $type::decode(b"d1:ad1:bi1e1:c4:abcde1:di3ee").unwrap();
                 let map = value.as_dict().unwrap();
                 let a = &map["a"];
                 let sub_map = a.as_dict().unwrap();
@@ -22,7 +23,7 @@ macro_rules! tests {
 
             #[test]
             fn encode_str() {
-                let s = <$type>::with_str("Hello world");
+                let s = $type::with_str("Hello world");
                 let mut w = vec![];
                 s.encode(&mut w).unwrap();
                 assert_bytes_eq!(b"11:Hello world", w);
@@ -30,7 +31,7 @@ macro_rules! tests {
 
             #[test]
             fn encode_i64() {
-                let s = <$type>::with_int(100);
+                let s = $type::with_int(100);
                 let mut w = vec![];
                 s.encode(&mut w).unwrap();
                 assert_bytes_eq!(b"i100e", w);
@@ -38,31 +39,31 @@ macro_rules! tests {
 
             #[test]
             fn encode_list() {
-                let v = <$type>::with_list(vec![
-                    <$type>::with_int(100),
-                    <$type>::with_str("hello"),
-                    <$type>::with_str("world"),
+                let v = $type::with_list(vec![
+                    $type::with_int(100),
+                    $type::with_str("hello"),
+                    $type::with_str("world"),
                 ]);
                 assert_eq!("li100e5:hello5:worlde", v.to_string());
             }
 
             #[test]
             fn decode_str() {
-                let v = <$type>::decode(b"10:helloworld").unwrap();
+                let v = $type::decode(b"10:helloworld").unwrap();
                 let s = v.as_str_bytes().unwrap();
                 assert_eq!(b"helloworld", s);
             }
 
             #[test]
             fn decode_i64() {
-                let v = <$type>::decode(b"i100e").unwrap();
+                let v = $type::decode(b"i100e").unwrap();
                 let s: i64 = v.as_int().unwrap();
                 assert_eq!(100, s);
             }
 
             #[test]
             fn decode_list() {
-                let v = <$type>::decode(b"li100e10:helloworldli100e2:24ee").unwrap();
+                let v = $type::decode(b"li100e10:helloworldli100e2:24ee").unwrap();
 
                 let list = v.as_list().unwrap();
                 assert_eq!(100, list[0].as_int().unwrap());
@@ -75,7 +76,7 @@ macro_rules! tests {
 
             #[test]
             fn decode_dict() {
-                let v = <$type>::decode(b"d5:hello5:worlde").unwrap();
+                let v = $type::decode(b"d5:hello5:worlde").unwrap();
                 let map = v.as_dict().unwrap();
                 assert_eq!(1, map.len());
                 assert_eq!(b"world", map["hello"].as_str_bytes().unwrap());
@@ -83,7 +84,7 @@ macro_rules! tests {
 
             #[test]
             fn decode_dict_2() {
-                let v = <$type>::decode(b"d3:cow3:moo4:spam4:eggse").unwrap();
+                let v = $type::decode(b"d3:cow3:moo4:spam4:eggse").unwrap();
                 let map = v.as_dict().unwrap();
                 assert_eq!(2, map.len());
                 assert_eq!(b"moo", map["cow"].as_str_bytes().unwrap());
@@ -92,7 +93,7 @@ macro_rules! tests {
 
             #[test]
             fn decode_str_02() {
-                let v = <$type>::decode(b"26:abcdefghijklmnopqrstuvwxyz").unwrap();
+                let v = $type::decode(b"26:abcdefghijklmnopqrstuvwxyz").unwrap();
                 let s = v.as_str().unwrap();
                 assert_eq!("abcdefghijklmnopqrstuvwxyz", s);
             }
@@ -100,13 +101,13 @@ macro_rules! tests {
             #[test]
             fn decode_large_str() {
                 let s = String::from("1000000:") + &"x".repeat(1_000_000);
-                let v = <$type>::decode(s.as_bytes()).unwrap();
+                let v = $type::decode(s.as_bytes()).unwrap();
                 assert_eq!(&s[8..], v.as_str().unwrap());
             }
 
             #[test]
             fn decode_list_02() {
-                let v = <$type>::decode(b"li12345e3:aaae").unwrap();
+                let v = $type::decode(b"li12345e3:aaae").unwrap();
                 let list = v.as_list().unwrap();
                 assert_eq!(2, list.len());
 
@@ -119,7 +120,7 @@ macro_rules! tests {
 
             #[test]
             fn decode_dict_02() {
-                let v = <$type>::decode(b"d1:ai12453e1:b3:aaa1:c3:bbb1:X10:0123456789e").unwrap();
+                let v = $type::decode(b"d1:ai12453e1:b3:aaa1:c3:bbb1:X10:0123456789e").unwrap();
                 let dict = v.as_dict().unwrap();
                 assert_eq!(4, dict.len());
 
@@ -138,19 +139,19 @@ macro_rules! tests {
 
             #[test]
             fn decode_dict_key_novalue() {
-                let e = <$type>::decode(b"d1:ai1e1:be").unwrap_err();
+                let e = $type::decode(b"d1:ai1e1:be").unwrap_err();
                 assert_eq!(bencode::Error::ParseDict, e);
             }
 
             #[test]
             fn decode_dict_non_str_key() {
-                let e = <$type>::decode(b"di5e1:ae").unwrap_err();
+                let e = $type::decode(b"di5e1:ae").unwrap_err();
                 assert_eq!(bencode::Error::ParseDict, e);
             }
 
             #[test]
             fn decode_dict_null_key() {
-                let v = <$type>::decode(b"d3:a\0bi1ee").unwrap();
+                let v = $type::decode(b"d3:a\0bi1ee").unwrap();
                 let dict = v.as_dict().unwrap();
                 assert_eq!(1, dict.len());
 
@@ -159,7 +160,7 @@ macro_rules! tests {
 
             #[test]
             fn decode_dict_non_sorted_key_01() {
-                let v = <$type>::decode(b"d2:abi1e2:aai2ee").unwrap();
+                let v = $type::decode(b"d2:abi1e2:aai2ee").unwrap();
                 let dict = v.as_dict().unwrap();
                 assert_eq!(2, dict.len());
 
@@ -169,19 +170,19 @@ macro_rules! tests {
 
             #[test]
             fn decode_64_bit_int() {
-                let v = <$type>::decode(b"i9223372036854775807e").unwrap();
+                let v = $type::decode(b"i9223372036854775807e").unwrap();
                 assert_eq!(9223372036854775807, v.as_int().unwrap());
             }
 
             #[test]
             fn decode_64_bit_int_negative() {
-                let v = <$type>::decode(b"i-9223372036854775807e").unwrap();
+                let v = $type::decode(b"i-9223372036854775807e").unwrap();
                 assert_eq!(-9223372036854775807, v.as_int().unwrap());
             }
 
             #[test]
             fn decode_int_invalid_digit() {
-                let e = <$type>::decode(b"i92337203t854775807e").unwrap_err();
+                let e = $type::decode(b"i92337203t854775807e").unwrap_err();
                 assert_eq!(bencode::Error::ParseInt, e);
             }
 
@@ -198,7 +199,7 @@ macro_rules! tests {
                     0x7a, 0x8d, 0xc3, 0xd6, 0x31, 0x3a, 0x79, 0x31, 0xae, 0x71, 0x65, 0,
                 ];
 
-                let e = <$type>::decode(&buf).unwrap_err();
+                let e = $type::decode(&buf).unwrap_err();
                 assert_eq!(bencode::Error::ParseDict, e);
             }
 
@@ -214,11 +215,11 @@ macro_rules! tests {
                     buf[i] = b'e';
                 }
 
-                let e = <$type>::decode_with_limits(&buf, Some(1000), None).unwrap_err();
+                let e = $type::decode_with_limits(&buf, Some(1000), None).unwrap_err();
                 assert_eq!(bencode::Error::DepthLimit, e);
 
-                <$type>::decode_with_limits(&buf, Some(1024), None).unwrap();
-                <$type>::decode_with_limits(&buf, Some(1025), None).unwrap();
+                $type::decode_with_limits(&buf, Some(1024), None).unwrap();
+                $type::decode_with_limits(&buf, Some(1025), None).unwrap();
             }
 
             #[test]
@@ -231,28 +232,28 @@ macro_rules! tests {
                 }
                 buf[1023] = b'e';
 
-                let e = <$type>::decode_with_limits(&buf, None, Some(510)).unwrap_err();
+                let e = $type::decode_with_limits(&buf, None, Some(510)).unwrap_err();
                 assert_eq!(bencode::Error::ItemLimit, e);
 
-                <$type>::decode_with_limits(&buf, None, Some(511)).unwrap();
-                <$type>::decode_with_limits(&buf, None, Some(512)).unwrap();
+                $type::decode_with_limits(&buf, None, Some(511)).unwrap();
+                $type::decode_with_limits(&buf, None, Some(512)).unwrap();
             }
 
             #[test]
             fn decode_expected_colon_dict() {
-                let e = <$type>::decode(b"d1000").unwrap_err();
+                let e = $type::decode(b"d1000").unwrap_err();
                 assert_eq!(bencode::Error::ExpectedChar(b':'), e);
             }
 
             #[test]
             fn decode_empty_string() {
-                let e = <$type>::decode(b"").unwrap_err();
+                let e = $type::decode(b"").unwrap_err();
                 assert_eq!(bencode::Error::EOF, e);
             }
 
             #[test]
             fn decode_partial_string() {
-                let e = <$type>::decode(b"100:..").unwrap_err();
+                let e = $type::decode(b"100:..").unwrap_err();
                 assert_eq!(bencode::Error::EOF, e);
             }
 
@@ -266,7 +267,7 @@ macro_rules! tests {
                 }
                 buf.push(b'e');
 
-                let v = <$type>::decode(&buf).unwrap();
+                let v = $type::decode(&buf).unwrap();
                 let list = v.as_list().unwrap();
                 assert_eq!(1000, list.len());
                 for i in 0..1000 {
@@ -284,7 +285,7 @@ macro_rules! tests {
                 }
                 buf.push(b'e');
 
-                let v = <$type>::decode(&buf).unwrap();
+                let v = $type::decode(&buf).unwrap();
                 let dict = v.as_dict().unwrap();
                 assert_eq!(1000, dict.len());
                 for i in 0..1000 {
@@ -295,7 +296,7 @@ macro_rules! tests {
 
             #[test]
             fn decode_parse_int_overflow() {
-                let e = <$type>::decode(b"i9223372036854775808e").unwrap_err();
+                let e = $type::decode(b"i9223372036854775808e").unwrap_err();
                 assert_eq!(bencode::Error::ParseInt, e);
             }
 
@@ -309,7 +310,7 @@ macro_rules! tests {
                     "d1:a9205357638345293824:11111",
                 ];
                 for s in arr.iter() {
-                    let e = <$type>::decode(s.as_bytes()).unwrap_err();
+                    let e = $type::decode(s.as_bytes()).unwrap_err();
                     assert_eq!(bencode::Error::EOF, e);
                 }
             }
@@ -320,7 +321,7 @@ macro_rules! tests {
                 // b: string
                 // c: list
                 // d: dict
-                let v = <$type>::decode(b"d1:ai1e1:b3:foo1:cli1ei2ee1:dd1:xi1eee").unwrap();
+                let v = $type::decode(b"d1:ai1e1:b3:foo1:cli1ei2ee1:dd1:xi1eee").unwrap();
                 assert!(v.is_dict());
 
                 assert_eq!(Some(1), v.dict_find_int_value("a"));
@@ -352,5 +353,5 @@ macro_rules! tests {
     };
 }
 
-tests!(value, bencode::Value);
-tests!(value_ref, bencode::ValueRef);
+tests!(value, Value);
+tests!(value_ref, ValueRef);

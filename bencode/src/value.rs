@@ -135,14 +135,6 @@ impl Value {
         v
     }
 
-    fn into_string(self) -> Option<String> {
-        if let Value::String(v) = self {
-            String::from_utf8(v).ok()
-        } else {
-            None
-        }
-    }
-
     pub fn dict_find_int(&self, key: &str) -> Option<&Value> {
         let dict = self.as_dict()?;
         let n = dict.get(key)?;
@@ -214,6 +206,14 @@ impl Value {
 
     pub fn list_len(&self) -> Option<usize> {
         Some(self.as_list()?.len())
+    }
+
+    fn into_string(self) -> Option<String> {
+        if let Value::String(v) = self {
+            String::from_utf8(v).ok()
+        } else {
+            None
+        }
     }
 
     pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
