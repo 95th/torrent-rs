@@ -182,6 +182,27 @@ impl<'a> ValueRef<'a> {
         }
     }
 
+    pub fn dict_len(&self) -> Option<usize> {
+        Some(self.as_dict()?.len())
+    }
+
+    pub fn list_at(&self, index: usize) -> Option<&ValueRef<'a>> {
+        let list = self.as_list()?;
+        list.get(index)
+    }
+
+    pub fn list_string_value_at(&self, index: usize) -> Option<&'a str> {
+        self.list_at(index)?.as_str()
+    }
+
+    pub fn list_int_value_at(&self, index: usize) -> Option<i64> {
+        self.list_at(index)?.as_int()
+    }
+
+    pub fn list_len(&self) -> Option<usize> {
+        Some(self.as_list()?.len())
+    }
+
     pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         enum Token<'a> {
             B(&'a ValueRef<'a>),

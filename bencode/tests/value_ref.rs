@@ -349,5 +349,17 @@ fn decode_dict_find_funs() {
     assert_eq!(None, v.dict_find_str("x"));
     assert_eq!(None, v.dict_find_str_value("x"));
 
-    assert!(v.dict_find_list_value("c").is_some());
+    let c = v.dict_find_list("c").unwrap();
+    assert_eq!(Some(2), c.list_len());
+    assert_eq!(Some(1), c.list_int_value_at(0));
+    assert_eq!(Some(2), c.list_int_value_at(1));
+    assert!(v.dict_find_dict("c").is_none());
+
+
+    let d = v.dict_find_dict("d").unwrap();
+    assert_eq!(Some(1), d.dict_find_int_value("x"));
+    assert_eq!(None, d.dict_find_int_value("y"));
+    assert!(v.dict_find_dict("c").is_none());
+
+    assert_eq!(Some(4), v.dict_len());
 }
