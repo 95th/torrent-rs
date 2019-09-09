@@ -43,10 +43,8 @@ impl From<Error> for io::Error {
             ExpectedChar(v) => {
                 io::Error::new(io::ErrorKind::InvalidData, format!("Expected {}", v))
             }
-            DepthLimit => {
-                io::Error::new(io::ErrorKind::InvalidData, format!("Depth limit reached"))
-            }
-            ItemLimit => io::Error::new(io::ErrorKind::InvalidData, format!("Item limit reached")),
+            DepthLimit => io::Error::new(io::ErrorKind::InvalidData, "Depth limit reached"),
+            ItemLimit => io::Error::new(io::ErrorKind::InvalidData, "Item limit reached"),
         }
     }
 }

@@ -1,4 +1,5 @@
 use crate::error::*;
+use crate::util::{to_int, Reader};
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -6,8 +7,8 @@ use std::io;
 
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum ValueRef<'a> {
-    String(&'a [u8]),
     Int(i64),
+    String(&'a [u8]),
     List(Vec<ValueRef<'a>>),
     Dict(BTreeMap<&'a str, ValueRef<'a>>),
 }
@@ -344,66 +345,9 @@ impl<'a> From<&'a [u8]> for ValueRef<'a> {
     }
 }
 
-fn to_int(b: &[u8]) -> Result<i64> {
-    std::str::from_utf8(b)
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .ok_or_else(|| Error::ParseInt)
-}
-
 impl fmt::Display for ValueRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let v = self.to_vec();
         write!(f, "{}", String::from_utf8_lossy(&v))
-    }
-}
-
-#[derive(Debug)]
-struct Reader<'a> {
-    buf: &'a [u8],
-    curr_idx: usize,
-}
-
-impl<'a> Reader<'a> {
-    fn new(buf: &[u8]) -> Reader {
-        Reader { buf, curr_idx: 0 }
-    }
-
-    fn next_byte(&mut self) -> Option<u8> {
-        let byte = self.buf.get(self.curr_idx)?;
-        self.curr_idx += 1;
-        Some(*byte)
-    }
-
-    fn move_back(&mut self) {
-        debug_assert!(self.curr_idx > 0);
-        self.curr_idx -= 1;
-    }
-
-    fn read_until(&mut self, stop_byte: u8) -> Result<&'a [u8]> {
-        if self.curr_idx >= self.buf.len() {
-            self.curr_idx = self.buf.len();
-            return Err(Error::EOF);
-        }
-
-        let slice = &self.buf[self.curr_idx..];
-        let pos = slice
-            .iter()
-            .position(|&b| b == stop_byte)
-            .ok_or_else(|| Error::ExpectedChar(stop_byte))?;
-        self.curr_idx += pos + 1; // Plus one to ignore the stop byte
-        Ok(&slice[..pos])
-    }
-
-    fn read_exact(&mut self, len: usize) -> Result<&'a [u8]> {
-        let end_index = self.curr_idx + len;
-        if self.curr_idx >= self.buf.len() || end_index - 1 >= self.buf.len() {
-            self.curr_idx = self.buf.len();
-            return Err(Error::EOF);
-        }
-
-        let slice = &self.buf[self.curr_idx..end_index];
-        self.curr_idx = end_index;
-        Ok(slice)
     }
 }

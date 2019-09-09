@@ -1,10 +1,11 @@
 use crate::error::{Error, Result};
+use crate::util::{to_int, Reader};
 
 use std::collections::BTreeMap;
 use std::fmt;
-use std::io::{self, Cursor};
+use std::io;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum Value {
     Int(i64),
     String(Vec<u8>),
@@ -142,6 +143,79 @@ impl Value {
         }
     }
 
+    pub fn dict_find_int(&self, key: &str) -> Option<&Value> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_int() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn dict_find_int_value(&self, key: &str) -> Option<i64> {
+        self.dict_find_int(key)?.as_int()
+    }
+
+    pub fn dict_find_str(&self, key: &str) -> Option<&Value> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_string() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn dict_find_str_value(&self, key: &str) -> Option<&str> {
+        self.dict_find_str(key)?.as_str()
+    }
+
+    pub fn dict_find_list(&self, key: &str) -> Option<&Value> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_list() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn dict_find_list_value(&self, key: &str) -> Option<&[Value]> {
+        self.dict_find_list(key)?.as_list()
+    }
+
+    pub fn dict_find_dict(&self, key: &str) -> Option<&Value> {
+        let dict = self.as_dict()?;
+        let n = dict.get(key)?;
+        if n.is_dict() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn dict_len(&self) -> Option<usize> {
+        Some(self.as_dict()?.len())
+    }
+
+    pub fn list_at(&self, index: usize) -> Option<&Value> {
+        let list = self.as_list()?;
+        list.get(index)
+    }
+
+    pub fn list_string_value_at(&self, index: usize) -> Option<&str> {
+        self.list_at(index)?.as_str()
+    }
+
+    pub fn list_int_value_at(&self, index: usize) -> Option<i64> {
+        self.list_at(index)?.as_int()
+    }
+
+    pub fn list_len(&self) -> Option<usize> {
+        Some(self.as_list()?.len())
+    }
+
     pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         enum Token<'a> {
             B(&'a Value),
@@ -187,12 +261,12 @@ impl Value {
         Ok(())
     }
 
-    pub fn decode<R: io::Read>(bytes: &mut R) -> Result<Value> {
+    pub fn decode(bytes: &[u8]) -> Result<Value> {
         Self::decode_with_limits(bytes, None, None)
     }
 
-    pub fn decode_with_limits<R: io::Read>(
-        bytes: &mut R,
+    pub fn decode_with_limits(
+        bytes: &[u8],
         depth_limit: Option<usize>,
         item_limit: Option<usize>,
     ) -> Result<Value> {
@@ -204,13 +278,12 @@ impl Value {
 
         let mut c_stack = vec![];
         let mut v_stack = vec![];
-        let mut buf = [0];
         let mut items = 0;
+        let mut rdr = Reader::new(bytes);
 
         loop {
-            println!("e: {:?} {:?}", c_stack, v_stack);
-            match next_byte(bytes, &mut buf) {
-                Ok(b'e') => match c_stack.pop() {
+            match rdr.next_byte() {
+                Some(b'e') => match c_stack.pop() {
                     Some(Kind::List(len)) => {
                         let mut vec = Vec::with_capacity(v_stack.len() - len);
                         while v_stack.len() > len {
@@ -236,7 +309,7 @@ impl Value {
                     }
                     None => return Err(Error::InvalidChar(b'e')),
                 },
-                Ok(v) => {
+                Some(v) => {
                     if c_stack.is_empty() && !v_stack.is_empty() {
                         return Err(Error::EOF);
                     }
@@ -252,25 +325,22 @@ impl Value {
                     }
 
                     match v {
-                        d @ b'0'..=b'9' => {
-                            let mut value = read_until(bytes, b':', &mut buf)?;
-                            value.insert(0, d);
-                            let len = to_int(&value)?;
-                            let mut v = vec![0u8; len as usize];
-                            bytes.read_exact(&mut v).map_err(|_| Error::EOF)?;
-                            v_stack.push(Value::String(v));
+                        _d @ b'0'..=b'9' => {
+                            rdr.move_back();
+                            let len = to_int(rdr.read_until(b':')?)?;
+                            let value = rdr.read_exact(len as usize)?;
+                            v_stack.push(Value::String(value.to_vec()));
                         }
                         b'i' => {
-                            let bytes = read_until(bytes, b'e', &mut buf)?;
-                            v_stack.push(Value::Int(to_int(&bytes)?))
+                            let n = to_int(rdr.read_until(b'e')?)?;
+                            v_stack.push(Value::Int(n))
                         }
                         b'l' => c_stack.push(Kind::List(v_stack.len())),
                         b'd' => c_stack.push(Kind::Dict(v_stack.len())),
                         c => return Err(Error::InvalidChar(c)),
                     }
                 }
-                Err(Error::EOF) => break,
-                Err(e) => return Err(e),
+                None => break,
             }
         }
 
@@ -286,8 +356,7 @@ impl std::str::FromStr for Value {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Value> {
-        let mut c = Cursor::new(s);
-        Value::decode(&mut c)
+        Value::decode(s.as_bytes())
     }
 }
 
@@ -307,30 +376,4 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", String::from_utf8_lossy(&self.to_vec()))
     }
-}
-
-fn next_byte<R: io::Read>(r: &mut R, buf: &mut [u8; 1]) -> Result<u8> {
-    let amt = r.read(buf).map_err(|_| Error::IO)?;
-    if amt == 0 {
-        Err(Error::EOF)
-    } else {
-        Ok(buf[0])
-    }
-}
-
-fn read_until<R: io::Read>(r: &mut R, stop: u8, buf: &mut [u8; 1]) -> Result<Vec<u8>> {
-    let mut v = vec![];
-    loop {
-        let b = next_byte(r, buf).map_err(|_| Error::ExpectedChar(stop))?;
-        if b == stop {
-            return Ok(v);
-        }
-        v.push(b)
-    }
-}
-
-fn to_int(b: &[u8]) -> Result<i64> {
-    std::str::from_utf8(b)
-        .map_err(|_| Error::ParseInt)
-        .and_then(|s| s.parse().map_err(|_| Error::ParseInt))
 }
