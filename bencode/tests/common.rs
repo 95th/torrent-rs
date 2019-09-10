@@ -50,7 +50,7 @@ macro_rules! tests {
             #[test]
             fn decode_str() {
                 let v = $type::decode(b"10:helloworld").unwrap();
-                let s = v.as_str_bytes().unwrap();
+                let s = v.as_bytes().unwrap();
                 assert_eq!(b"helloworld", s);
             }
 
@@ -67,11 +67,11 @@ macro_rules! tests {
 
                 let list = v.as_list().unwrap();
                 assert_eq!(100, list[0].as_int().unwrap());
-                assert_eq!(b"helloworld", list[1].as_str_bytes().unwrap());
+                assert_eq!(b"helloworld", list[1].as_bytes().unwrap());
 
                 let sublist = list[2].as_list().unwrap();
                 assert_eq!(100, sublist[0].as_int().unwrap());
-                assert_eq!(b"24", sublist[1].as_str_bytes().unwrap());
+                assert_eq!(b"24", sublist[1].as_bytes().unwrap());
             }
 
             #[test]
@@ -79,7 +79,7 @@ macro_rules! tests {
                 let v = $type::decode(b"d5:hello5:worlde").unwrap();
                 let map = v.as_dict().unwrap();
                 assert_eq!(1, map.len());
-                assert_eq!(b"world", map["hello"].as_str_bytes().unwrap());
+                assert_eq!(b"world", map["hello"].as_bytes().unwrap());
             }
 
             #[test]
@@ -87,8 +87,8 @@ macro_rules! tests {
                 let v = $type::decode(b"d3:cow3:moo4:spam4:eggse").unwrap();
                 let map = v.as_dict().unwrap();
                 assert_eq!(2, map.len());
-                assert_eq!(b"moo", map["cow"].as_str_bytes().unwrap());
-                assert_eq!(b"eggs", map["spam"].as_str_bytes().unwrap());
+                assert_eq!(b"moo", map["cow"].as_bytes().unwrap());
+                assert_eq!(b"eggs", map["spam"].as_bytes().unwrap());
             }
 
             #[test]

@@ -11,7 +11,7 @@ impl ValueRef<'_> {
     pub fn to_owned(&self) -> Value {
         match self {
             ValueRef::Int(n) => Value::Int(*n),
-            ValueRef::String(buf) => Value::String(buf.to_vec()),
+            ValueRef::Bytes(buf) => Value::Bytes(buf.to_vec()),
             ValueRef::List(list) => Value::List(list.iter().map(|v| v.to_owned()).collect()),
             ValueRef::Dict(dict) => Value::Dict(
                 dict.iter()
@@ -26,7 +26,7 @@ impl Value {
     pub fn as_ref(&self) -> ValueRef {
         match self {
             Value::Int(n) => ValueRef::Int(*n),
-            Value::String(buf) => ValueRef::String(&buf),
+            Value::Bytes(buf) => ValueRef::Bytes(&buf),
             Value::List(list) => ValueRef::List(list.iter().map(|v| v.as_ref()).collect()),
             Value::Dict(dict) => {
                 ValueRef::Dict(dict.iter().map(|(k, v)| (k.as_ref(), v.as_ref())).collect())

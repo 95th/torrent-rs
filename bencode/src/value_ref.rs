@@ -8,7 +8,7 @@ use std::io;
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum ValueRef<'a> {
     Int(i64),
-    String(&'a [u8]),
+    Bytes(&'a [u8]),
     List(Vec<ValueRef<'a>>),
     Dict(BTreeMap<&'a str, ValueRef<'a>>),
 }
@@ -19,7 +19,7 @@ impl<'a> ValueRef<'a> {
     }
 
     pub fn with_str(s: &str) -> ValueRef {
-        ValueRef::String(s.as_bytes())
+        ValueRef::Bytes(s.as_bytes())
     }
 
     pub fn with_list(list: Vec<ValueRef>) -> ValueRef {
@@ -31,7 +31,7 @@ impl<'a> ValueRef<'a> {
     }
 
     pub fn is_string(&self) -> bool {
-        if let ValueRef::String(_) = self {
+        if let ValueRef::Bytes(_) = self {
             true
         } else {
             false
@@ -71,14 +71,14 @@ impl<'a> ValueRef<'a> {
 
     pub fn as_str(&self) -> Option<&'a str> {
         match self {
-            ValueRef::String(buf) => std::str::from_utf8(buf).ok(),
+            ValueRef::Bytes(buf) => std::str::from_utf8(buf).ok(),
             _ => None,
         }
     }
 
-    pub fn as_str_bytes(&self) -> Option<&'a [u8]> {
+    pub fn as_bytes(&self) -> Option<&'a [u8]> {
         match self {
-            ValueRef::String(buf) => Some(buf),
+            ValueRef::Bytes(buf) => Some(buf),
             _ => None,
         }
     }
@@ -220,7 +220,7 @@ impl<'a> ValueRef<'a> {
                     Int(n) => {
                         write!(w, "i{}e", n)?;
                     }
-                    String(v) => {
+                    Bytes(v) => {
                         write!(w, "{}:", v.len())?;
                         w.write_all(&v)?;
                     }
@@ -316,7 +316,7 @@ impl<'a> ValueRef<'a> {
                             rdr.move_back();
                             let len = rdr.read_int_until(b':')?;
                             let value = rdr.read_exact(len as usize)?;
-                            v_stack.push(ValueRef::String(value));
+                            v_stack.push(ValueRef::Bytes(value));
                         }
                         b'i' => {
                             let n = rdr.read_int_until(b'e')?;
@@ -341,7 +341,7 @@ impl<'a> ValueRef<'a> {
 
 impl<'a> From<&'a [u8]> for ValueRef<'a> {
     fn from(value: &[u8]) -> ValueRef {
-        ValueRef::String(value)
+        ValueRef::Bytes(value)
     }
 }
 

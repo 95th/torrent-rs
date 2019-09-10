@@ -40,7 +40,7 @@ impl DhtState {
                 let mut buf = vec![];
                 buf.write_all(id.data()).unwrap();
                 detail::write_address(&mut buf, addr).unwrap();
-                list.push(Value::String(buf));
+                list.push(buf.into());
             }
             dict.insert("node-id".to_owned(), Value::with_list(list));
         }
@@ -77,7 +77,7 @@ pub fn extract_node_ids(value: &ValueRef, key: &str) -> io::Result<NodeIds> {
     };
 
     if let Some(v) = dict.get(key) {
-        if let Some(old_nid) = v.as_str_bytes() {
+        if let Some(old_nid) = v.as_bytes() {
             if old_nid.len() == 20 {
                 ids.push((IpAddr::V4(Ipv4Addr::LOCALHOST), NodeId::from_bytes(old_nid)));
                 return Ok(ids);
@@ -86,7 +86,7 @@ pub fn extract_node_ids(value: &ValueRef, key: &str) -> io::Result<NodeIds> {
 
         if let Some(list) = v.as_list() {
             for nid in list {
-                match nid.as_str_bytes() {
+                match nid.as_bytes() {
                     Some(s) if s.len() == 24 || s.len() == 36 => {
                         let (id, addr) = s.split_at(20);
                         let mut c = io::Cursor::new(addr);
@@ -109,7 +109,7 @@ pub fn extract_node_ids(value: &ValueRef, key: &str) -> io::Result<NodeIds> {
 fn read_endpoint_list(values: &[ValueRef]) -> io::Result<Vec<SocketAddr>> {
     let mut list = vec![];
     for v in values {
-        match v.as_str_bytes() {
+        match v.as_bytes() {
             Some(s) if s.len() == 6 || s.len() == 18 => {
                 let mut c = io::Cursor::new(s);
                 let addr = if s.len() == 6 {
@@ -131,7 +131,7 @@ fn save_nodes(nodes: &[SocketAddr]) -> io::Result<Value> {
     for node in nodes {
         let mut v = vec![];
         detail::write_socket_addr(&mut v, node)?;
-        list.push(Value::String(v));
+        list.push(v.into());
     }
 
     Ok(Value::with_list(list))

@@ -8,7 +8,7 @@ use std::io;
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum Value {
     Int(i64),
-    String(Vec<u8>),
+    Bytes(Vec<u8>),
     List(Vec<Value>),
     Dict(BTreeMap<String, Value>),
 }
@@ -19,11 +19,11 @@ impl Value {
     }
 
     pub fn with_str(s: &str) -> Value {
-        Value::String(s.as_bytes().to_vec())
+        Value::Bytes(s.as_bytes().to_vec())
     }
 
     pub fn with_string(s: String) -> Value {
-        Value::String(s.into_bytes())
+        Value::Bytes(s.into_bytes())
     }
 
     pub fn with_list(list: Vec<Value>) -> Value {
@@ -35,7 +35,7 @@ impl Value {
     }
 
     pub fn is_string(&self) -> bool {
-        if let Value::String(_) = self {
+        if let Value::Bytes(_) = self {
             true
         } else {
             false
@@ -75,14 +75,14 @@ impl Value {
 
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            Value::String(buf) => std::str::from_utf8(buf).ok(),
+            Value::Bytes(buf) => std::str::from_utf8(buf).ok(),
             _ => None,
         }
     }
 
-    pub fn as_str_bytes(&self) -> Option<&[u8]> {
+    pub fn as_bytes(&self) -> Option<&[u8]> {
         match self {
-            Value::String(buf) => Some(buf),
+            Value::Bytes(buf) => Some(buf),
             _ => None,
         }
     }
@@ -209,7 +209,7 @@ impl Value {
     }
 
     fn into_string(self) -> Option<String> {
-        if let Value::String(v) = self {
+        if let Value::Bytes(v) = self {
             String::from_utf8(v).ok()
         } else {
             None
@@ -232,7 +232,7 @@ impl Value {
                     Int(n) => {
                         write!(w, "i{}e", n)?;
                     }
-                    String(v) => {
+                    Bytes(v) => {
                         write!(w, "{}:", v.len())?;
                         w.write_all(&v)?;
                     }
@@ -329,7 +329,7 @@ impl Value {
                             rdr.move_back();
                             let len = rdr.read_int_until(b':')?;
                             let value = rdr.read_exact(len as usize)?;
-                            v_stack.push(Value::String(value.to_vec()));
+                            v_stack.push(Value::Bytes(value.to_vec()));
                         }
                         b'i' => {
                             let n = rdr.read_int_until(b'e')?;
@@ -362,13 +362,13 @@ impl std::str::FromStr for Value {
 
 impl From<&[u8]> for Value {
     fn from(value: &[u8]) -> Value {
-        Value::String(value.to_vec())
+        Value::Bytes(value.to_vec())
     }
 }
 
 impl From<Vec<u8>> for Value {
     fn from(value: Vec<u8>) -> Value {
-        Value::String(value)
+        Value::Bytes(value)
     }
 }
 
