@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::util::{to_int, Reader};
+use crate::reader::Reader;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -314,12 +314,12 @@ impl<'a> ValueRef<'a> {
                     match v {
                         _d @ b'0'..=b'9' => {
                             rdr.move_back();
-                            let len = to_int(rdr.read_until(b':')?)?;
+                            let len = rdr.read_int_until(b':')?;
                             let value = rdr.read_exact(len as usize)?;
                             v_stack.push(ValueRef::String(value));
                         }
                         b'i' => {
-                            let n = to_int(rdr.read_until(b'e')?)?;
+                            let n = rdr.read_int_until(b'e')?;
                             v_stack.push(ValueRef::Int(n))
                         }
                         b'l' => c_stack.push(Kind::List(v_stack.len())),

@@ -1,12 +1,6 @@
 use crate::error::{Error, Result};
 use std::fmt;
 
-pub fn to_int(b: &[u8]) -> Result<i64> {
-    std::str::from_utf8(b)
-        .map_err(|_| Error::ParseInt)
-        .and_then(|s| s.parse().map_err(|_| Error::ParseInt))
-}
-
 pub struct Reader<'a> {
     buf: &'a [u8],
     curr_idx: usize,
@@ -49,6 +43,12 @@ impl<'a> Reader<'a> {
             .ok_or_else(|| Error::ExpectedChar(stop_byte))?;
         self.curr_idx += pos + 1; // Plus one to ignore the stop byte
         Ok(&slice[..pos])
+    }
+
+    pub fn read_int_until(&mut self, stop_byte: u8) -> Result<i64> {
+        let buf = self.read_until(stop_byte)?;
+        let s = std::str::from_utf8(buf).map_err(|_| Error::ParseInt)?;
+        s.parse().map_err(|_| Error::ParseInt)
     }
 
     pub fn read_exact(&mut self, len: usize) -> Result<&'a [u8]> {
