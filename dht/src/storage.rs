@@ -1,7 +1,7 @@
 use crate::bloom_filter::BloomFilter;
 use crate::detail;
 use crate::node::NodeId;
-use crate::rand;
+use crate::random;
 use crate::settings::DhtSettings;
 use crate::types::{SequenceNumber, Signature};
 use crate::Sha1Hash;
@@ -259,7 +259,7 @@ impl DhtStorage for DefaultDhtStorage<'_> {
 
                 assert!(candidates >= to_pick);
                 candidates -= 1;
-                if rand::random(candidates + 1) > to_pick {
+                if random::random_usize(candidates + 1) > to_pick {
                     continue;
                 }
 
