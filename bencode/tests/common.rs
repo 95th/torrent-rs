@@ -55,6 +55,12 @@ macro_rules! tests {
             }
 
             #[test]
+            fn decode_str_negative_len() {
+                let e = $type::decode(b"-10:helloworld").unwrap_err();
+                assert_eq!(bencode::Error::InvalidChar(b'-'), e);
+            }
+
+            #[test]
             fn decode_i64() {
                 let v = $type::decode(b"i100e").unwrap();
                 let s: i64 = v.as_int().unwrap();
