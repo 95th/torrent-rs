@@ -1,10 +1,10 @@
 use std::net::SocketAddr;
 
-use bencode::Value;
+use bencode::ValueRef;
 use bitflags::bitflags;
 
 pub struct Msg<'a> {
-    message: &'a Value,
+    message: &'a ValueRef<'a>,
     addr: SocketAddr,
 }
 
@@ -24,6 +24,23 @@ bitflags! {
     }
 }
 
-pub fn verify_message_impl(msg: &Value, desc: &[KeyDesc]) -> Result<Vec<Value>, String> {
-    unimplemented!()
+pub fn verify_message_impl<'a, 'b>(
+    msg: &'b ValueRef<'a>,
+    desc: &[KeyDesc],
+    ret: &mut [&'b ValueRef<'a>],
+) -> Result<(), &'static str> {
+    debug_assert_eq!(desc.len(), ret.len());
+
+    if !msg.is_dict() {
+        return Err("Not a dictionary");
+    }
+
+    let stack = [msg; 5];
+    let size = ret.len();
+
+    for i in 0..size {
+        let k = &desc[i];
+        ret[i] = msg.dict_find(k.name).ok_or_else(|| "Key not found")?;
+    }
+    Ok(())
 }

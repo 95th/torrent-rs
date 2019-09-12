@@ -131,9 +131,13 @@ impl<'a> ValueRef<'a> {
         v
     }
 
-    pub fn dict_find_int(&self, key: &str) -> Option<&ValueRef<'a>> {
+    pub fn dict_find(&self, key: &str) -> Option<&ValueRef<'a>> {
         let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        dict.get(key)
+    }
+
+    pub fn dict_find_int(&self, key: &str) -> Option<&ValueRef<'a>> {
+        let n = self.dict_find(key)?;
         if n.is_int() {
             Some(n)
         } else {
@@ -146,8 +150,7 @@ impl<'a> ValueRef<'a> {
     }
 
     pub fn dict_find_str(&self, key: &str) -> Option<&ValueRef<'a>> {
-        let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        let n = self.dict_find(key)?;
         if n.is_string() {
             Some(n)
         } else {
@@ -160,8 +163,7 @@ impl<'a> ValueRef<'a> {
     }
 
     pub fn dict_find_list(&self, key: &str) -> Option<&ValueRef<'a>> {
-        let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        let n = self.dict_find(key)?;
         if n.is_list() {
             Some(n)
         } else {
@@ -174,8 +176,7 @@ impl<'a> ValueRef<'a> {
     }
 
     pub fn dict_find_dict(&self, key: &str) -> Option<&ValueRef<'a>> {
-        let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        let n = self.dict_find(key)?;
         if n.is_dict() {
             Some(n)
         } else {

@@ -135,9 +135,13 @@ impl Value {
         v
     }
 
-    pub fn dict_find_int(&self, key: &str) -> Option<&Value> {
+    pub fn dict_find(&self, key: &str) -> Option<&Value> {
         let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        dict.get(key)
+    }
+
+    pub fn dict_find_int(&self, key: &str) -> Option<&Value> {
+        let n = self.dict_find(key)?;
         if n.is_int() {
             Some(n)
         } else {
@@ -150,8 +154,7 @@ impl Value {
     }
 
     pub fn dict_find_str(&self, key: &str) -> Option<&Value> {
-        let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        let n = self.dict_find(key)?;
         if n.is_string() {
             Some(n)
         } else {
@@ -164,8 +167,7 @@ impl Value {
     }
 
     pub fn dict_find_list(&self, key: &str) -> Option<&Value> {
-        let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        let n = self.dict_find(key)?;
         if n.is_list() {
             Some(n)
         } else {
@@ -178,8 +180,7 @@ impl Value {
     }
 
     pub fn dict_find_dict(&self, key: &str) -> Option<&Value> {
-        let dict = self.as_dict()?;
-        let n = dict.get(key)?;
+        let n = self.dict_find(key)?;
         if n.is_dict() {
             Some(n)
         } else {
