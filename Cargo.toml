@@ -5,8 +5,10 @@ authors = ["95th <vargwin@gmail.com>"]
 edition = "2018"
 
 [workspace]
-members = ["bencode", "dht"]
+members = ["bencode", "dht", "common"]
 
 [dependencies]
 bencode = { path = "bencode" }
 dht = { path = "dht" }
+common = { path = "common" }
+bitflags = "1.1"

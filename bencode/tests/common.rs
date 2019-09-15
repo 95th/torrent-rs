@@ -1,10 +1,3 @@
-macro_rules! assert_bytes_eq {
-    ($expected: expr, $actual: expr) => {
-        assert_eq!($expected.len(), $actual.len());
-        assert!(!$expected.iter().zip($actual.iter()).any(|(a, b)| a != b));
-    };
-}
-
 macro_rules! tests {
     ($module: ident, $type: tt) => {
         mod $module {
@@ -26,7 +19,7 @@ macro_rules! tests {
                 let s = $type::with_str("Hello world");
                 let mut w = vec![];
                 s.encode(&mut w).unwrap();
-                assert_bytes_eq!(b"11:Hello world", w);
+                assert_eq!(w, b"11:Hello world");
             }
 
             #[test]
@@ -34,7 +27,7 @@ macro_rules! tests {
                 let s = $type::with_int(100);
                 let mut w = vec![];
                 s.encode(&mut w).unwrap();
-                assert_bytes_eq!(b"i100e", w);
+                assert_eq!(w, b"i100e");
             }
 
             #[test]

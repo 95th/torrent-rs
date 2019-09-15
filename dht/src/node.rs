@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use crate::Sha1Hash;
+use common::sha1::Sha1Hash;
 
 pub type NodeId = Sha1Hash;
 pub type NodeIds = Vec<(IpAddr, NodeId)>;

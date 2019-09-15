@@ -1,16 +1,15 @@
-use crate::bloom_filter::BloomFilter;
 use crate::detail;
 use crate::node::NodeId;
-use crate::random;
 use crate::settings::DhtSettings;
-use crate::types::{SequenceNumber, Signature};
-use crate::Sha1Hash;
 
 use bencode::Value;
+use common::bloom_filter::BloomFilter;
+use common::random;
+use common::sha1::Sha1Hash;
+use common::types::{SequenceNumber, Signature};
 
 use std::collections::HashMap;
 use std::io;
-use std::io::Write;
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 
@@ -34,12 +33,6 @@ impl DhtStorageCounter {
 }
 
 pub trait DhtStorage {
-    #[cfg(feature = "abi_v1")]
-    fn num_torrents(&self) -> usize;
-
-    #[cfg(feature = "abi_v1")]
-    fn num_peers(&self) -> usize;
-
     fn update_node_ids(&mut self, ids: &[NodeId]);
 
     fn get_peers(
@@ -175,19 +168,6 @@ impl DefaultDhtStorage<'_> {
 }
 
 impl DhtStorage for DefaultDhtStorage<'_> {
-    #[cfg(feature = "abi_v1")]
-    fn num_torrents(&self) -> usize {
-        self.map.len()
-    }
-
-    #[cfg(feature = "abi_v1")]
-    fn num_peers(&self) -> usize {
-        self.map
-            .values()
-            .map(|v| v.peers4.len() + v.peers6.len())
-            .sum()
-    }
-
     fn update_node_ids(&mut self, ids: &[NodeId]) {
         self.node_ids = ids.iter().cloned().collect();
     }

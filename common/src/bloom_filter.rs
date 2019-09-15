@@ -1,4 +1,4 @@
-use crate::Sha1Hash;
+use crate::sha1::Sha1Hash;
 
 const BIT_COUNTS: [usize; 16] = [
     zeros(0),
