@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use crate::download_priority::DownloadPriority;
 use crate::torrent_flags::TorrentFlags;
 use crate::torrent_info::TorrentInfo;
 
@@ -18,9 +19,9 @@ pub struct TorrentParams {
     storage_mode: (),
     storage: (),
     user_data: (),
-    file_priorities: Vec<()>,
+    pub file_priorities: Vec<DownloadPriority>,
     flags: TorrentFlags,
-    info_hash: Sha1Hash,
+    pub info_hash: Sha1Hash,
     max_uploads: isize,
     max_connections: isize,
     upload_limit: isize,

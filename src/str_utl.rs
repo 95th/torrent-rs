@@ -1,5 +1,7 @@
-use crate::error::{Error, Result};
 use std::io::{Cursor, Write};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+
+use crate::error::{Error, Result};
 
 pub fn split_string(s: &[u8], separator: u8) -> (&[u8], &[u8]) {
     if s.is_empty() {
@@ -33,7 +35,7 @@ pub fn unescape_string(s: &[u8]) -> Result<String> {
     String::from_utf8(v).map_err(|_| Error::InvalidEscapedString)
 }
 
-pub fn unescape_bytes<'a>(s: &'a [u8]) -> Result<Vec<u8>> {
+pub fn unescape_bytes(s: &[u8]) -> Result<Vec<u8>> {
     let mut v = vec![];
     let mut i = 0;
     while i < s.len() {
@@ -73,11 +75,69 @@ pub fn unescape_bytes<'a>(s: &'a [u8]) -> Result<Vec<u8>> {
     Ok(v)
 }
 
+#[inline(always)]
 pub fn to_upper(c: u8) -> u8 {
     match c {
         b'a'..=b'z' => c - b'a' + b'A',
         c => c,
     }
+}
+
+#[inline(always)]
+pub fn is_digit(c: u8) -> bool {
+    c >= b'0' && c <= b'9'
+}
+
+#[inline(always)]
+pub fn parse_int(s: &[u8]) -> Result<isize> {
+    std::str::from_utf8(s)
+        .map_err(|_| Error::ParseInt)
+        .and_then(|s| s.parse().map_err(|_| Error::ParseInt))
+}
+
+#[inline(always)]
+pub fn is_whitespace(c: u8) -> bool {
+    match c {
+        b' ' | b'\r' | b'\n' | b'\t' => true,
+        _ => false,
+    }
+}
+
+pub fn parse_endpoint(mut s: &[u8]) -> Result<SocketAddr> {
+    let s = trim(s);
+    if s.is_empty() {
+        return Err(Error::InvalidPort);
+    }
+
+    // this is for IPv6 Addr
+    if s[0] == b'[' {
+        if let Some(p) = s.iter().position(|&c| c == b']') {
+            let addr = &s[1..p];
+            if s.len() <= p + 2 {
+                return Err(Error::InvalidPort);
+            }
+            let port = &s[p + 1..];
+            if port.is_empty() || port[0] != b':' {
+                return Err(Error::InvalidPort);
+            }
+            let port = &port[1..];
+        } else {
+            return Err(Error::ExpectedCloseBracketInAddr);
+        }
+    }
+    unimplemented!();
+}
+
+pub fn trim(mut s: &[u8]) -> &[u8] {
+    if let Some(p) = s.iter().position(|&c| !is_whitespace(c)) {
+        s = &s[p..];
+    } else {
+        return &[];
+    }
+    if let Some(p) = s.iter().rev().position(|&c| !is_whitespace(c)) {
+        s = &s[..(s.len() - p)];
+    }
+    s
 }
 
 const INPUT_OUTPUT_MAPPING: [usize; 9] = [5, 1, 1, 2, 2, 3, 4, 4, 5];
@@ -186,5 +246,17 @@ mod test {
 
         // make sure invalid encoding returns the empty string
         assert_eq!(base32_decode(b"mZXw6yTBO1{#&*()="), b"");
+    }
+
+    #[test]
+    fn test_trim() {
+        assert_eq!(trim(b""), b"");
+        assert_eq!(trim(b"  "), b"");
+        assert_eq!(trim(b" \t \r \n "), b"");
+        assert_eq!(trim(b" \t \r \n a"), b"a");
+        assert_eq!(trim(b" \t \r \n a \t"), b"a");
+        assert_eq!(trim(b" \t \r \n a \t   p"), b"a \t   p");
+        assert_eq!(trim(b"a \t   p  "), b"a \t   p");
+        assert_eq!(trim(b"a \t   p  \n"), b"a \t   p");
     }
 }
