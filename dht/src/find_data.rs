@@ -8,7 +8,7 @@ use crate::observer::Observer;
 pub struct FindData;
 
 impl FindData {
-    pub async fn find_data(&self, dht_node: &Node, target: &NodeId) -> Vec<(NodeEntry, String)> {
+    pub fn find_data(&self, dht_node: &Node, target: &NodeId) -> Vec<(NodeEntry, String)> {
         unimplemented!()
     }
 
