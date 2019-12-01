@@ -6,7 +6,7 @@ use bencode::Value;
 use common::bloom_filter::{BloomFilter128, BloomFilter256};
 use common::random;
 use common::sha1::Sha1Hash;
-use common::types::{SequenceNumber, Signature};
+use common::types::{PublicKey, SequenceNumber, Signature};
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -57,7 +57,7 @@ pub trait DhtStorage {
 
     fn put_immutable_item(&mut self, target: &Sha1Hash, item: &str, addr: &IpAddr);
 
-    fn get_mutable_item_seq(&self, target: &Sha1Hash) -> SequenceNumber;
+    fn get_mutable_item_seq(&self, target: &Sha1Hash, seq: &mut SequenceNumber) -> bool;
 
     fn get_mutable_item(
         &self,
@@ -121,6 +121,15 @@ struct DhtImmutableItem {
     ips: BloomFilter128,
     last_seen: Instant,
     num_announcers: usize,
+    size: usize,
+}
+
+struct DhtMutableItem {
+    inner: DhtImmutableItem,
+    sig: Signature,
+    seq: SequenceNumber,
+    key: PublicKey,
+    salt: String,
 }
 
 impl DhtImmutableItem {
@@ -130,6 +139,7 @@ impl DhtImmutableItem {
             ips: BloomFilter128::new(),
             last_seen: Instant::now(),
             num_announcers: 0,
+            size: 0,
         }
     }
 
@@ -178,7 +188,7 @@ pub struct DefaultDhtStorage<'a> {
     node_ids: Vec<NodeId>,
     map: HashMap<NodeId, TorrentEntry>,
     immutable_table: HashMap<NodeId, DhtImmutableItem>,
-    mutable_table: HashMap<NodeId, DhtImmutableItem>,
+    mutable_table: HashMap<NodeId, DhtMutableItem>,
     infohashes_sample: InfohashesSample,
 }
 
@@ -386,8 +396,13 @@ impl DhtStorage for DefaultDhtStorage<'_> {
         i.unwrap().touch_item(addr);
     }
 
-    fn get_mutable_item_seq(&self, target: &Sha1Hash) -> SequenceNumber {
-        unimplemented!()
+    fn get_mutable_item_seq(&self, target: &Sha1Hash, seq: &mut SequenceNumber) -> bool {
+        if let Some(item) = self.mutable_table.get(target) {
+            *seq = item.seq;
+            true
+        } else {
+            false
+        }
     }
 
     fn get_mutable_item(
@@ -397,7 +412,21 @@ impl DhtStorage for DefaultDhtStorage<'_> {
         force_fill: bool,
         item: &mut Value,
     ) -> bool {
-        unimplemented!()
+        if let Some(f) = self.mutable_table.get(target) {
+            if let Some(dict) = item.as_dict_mut() {
+                dict.insert("seq".to_string(), Value::with_int(f.seq));
+                if force_fill || 0 <= seq && seq < f.seq {
+                    dict.insert("v".to_string(), f.inner.value.parse().unwrap());
+                    dict.insert("sig".to_string(), Value::from(&f.sig[..]));
+                    dict.insert("k".to_string(), Value::from(&f.key[..]));
+                }
+            } else {
+                panic!("Value not a dict");
+            }
+            true
+        } else {
+            false
+        }
     }
 
     fn put_mutable_item(
@@ -428,14 +457,12 @@ fn pick_least_imp<'a, T: ImmutableItem>(
     node_ids: &[NodeId],
     table: &'a HashMap<NodeId, T>,
 ) -> Option<(&'a NodeId, &'a T)> {
-    table.iter().min_by(|(n1, t1), (n2, t2)| {
-        let dist_1 = crate::node::min_distance_exp(n1, node_ids);
-        let dist_2 = crate::node::min_distance_exp(n2, node_ids);
+    table.iter().min_by(|(node_1, t1), (node_2, t2)| {
+        let dist_1 = crate::node::min_distance_exp(node_1, node_ids);
+        let dist_2 = crate::node::min_distance_exp(node_2, node_ids);
 
-        if t1.num_announcers() / 5 - dist_1 < t2.num_announcers() / 5 - dist_2 {
-            Ordering::Less
-        } else {
-            Ordering::Greater
-        }
+        let n1 = t1.num_announcers() / 5 - dist_1;
+        let n2 = t2.num_announcers() / 5 - dist_2;
+        n1.cmp(&n2)
     })
 }

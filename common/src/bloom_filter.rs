@@ -1,12 +1,12 @@
 use crate::sha1::Sha1Hash;
 
 macro_rules! bloom_filter {
-    ($name:ident, $size:expr) => {
-        pub struct $name {
+    ($ty:ident, $size:expr) => {
+        pub struct $ty {
             bits: [u8; $size],
         }
 
-        impl $name {
+        impl $ty {
             pub fn new() -> Self {
                 Self { bits: [0; $size] }
             }
@@ -34,13 +34,13 @@ macro_rules! bloom_filter {
             }
         }
 
-        impl From<Vec<u8>> for $name {
+        impl From<Vec<u8>> for $ty {
             fn from(bits: Vec<u8>) -> Self {
                 Self::from(&bits[..])
             }
         }
 
-        impl From<&[u8]> for $name {
+        impl From<&[u8]> for $ty {
             fn from(bits: &[u8]) -> Self {
                 let mut f = Self::new();
                 f.bits.copy_from_slice(bits);
@@ -48,19 +48,19 @@ macro_rules! bloom_filter {
             }
         }
 
-        impl From<[u8; $size]> for $name {
+        impl From<[u8; $size]> for $ty {
             fn from(bits: [u8; $size]) -> Self {
                 Self { bits }
             }
         }
 
-        impl From<&str> for $name {
+        impl From<&str> for $ty {
             fn from(s: &str) -> Self {
                 s.as_bytes().into()
             }
         }
 
-        impl From<String> for $name {
+        impl From<String> for $ty {
             fn from(s: String) -> Self {
                 s.into_bytes().into()
             }
