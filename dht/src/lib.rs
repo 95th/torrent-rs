@@ -1,3 +1,4 @@
+pub mod announce;
 pub mod detail;
 pub mod dht_observer;
 pub mod find_data;

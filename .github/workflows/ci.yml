@@ -1,0 +1,27 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macOS-latest, windows-2019, ubuntu-latest]
+
+    steps:
+      - name: Install rust
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: "1.38.0"
+
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Build
+        run: cargo build --all
+
+      - name: Run tests
+        run: cargo test --all

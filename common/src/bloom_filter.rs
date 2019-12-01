@@ -1,121 +1,120 @@
 use crate::sha1::Sha1Hash;
 
-const BIT_COUNTS: [usize; 16] = [
-    zeros(0),
-    zeros(1),
-    zeros(2),
-    zeros(3),
-    zeros(4),
-    zeros(5),
-    zeros(6),
-    zeros(7),
-    zeros(8),
-    zeros(9),
-    zeros(10),
-    zeros(11),
-    zeros(12),
-    zeros(13),
-    zeros(14),
-    zeros(15),
-];
-
-/// Count of number of zeros in lower 4 bits
-const fn zeros(n: u8) -> usize {
-    (0xf0 | n).count_zeros() as usize
-}
-
-pub struct BloomFilter {
-    bits: Vec<u8>,
-}
-
-impl BloomFilter {
-    pub fn new(size: usize) -> BloomFilter {
-        BloomFilter {
-            bits: vec![0; size],
+macro_rules! bloom_filter {
+    ($name:ident, $size:expr) => {
+        pub struct $name {
+            bits: [u8; $size],
         }
-    }
 
-    pub fn find(&self, key: &Sha1Hash) -> bool {
-        has_bits(key.data(), &self.bits)
-    }
+        impl $name {
+            pub fn new() -> Self {
+                Self { bits: [0; $size] }
+            }
 
-    pub fn set(&mut self, key: &Sha1Hash) {
-        set_bits(key.data(), &mut self.bits);
-    }
+            pub fn find(&self, key: &Sha1Hash) -> bool {
+                has_bits(key.data(), &self.bits, $size)
+            }
 
-    pub fn clear(&mut self) {
-        self.bits.iter_mut().for_each(|v| *v = 0);
-    }
+            pub fn set(&mut self, key: &Sha1Hash) {
+                set_bits(key.data(), &mut self.bits, $size);
+            }
 
-    pub fn size(&self) -> f64 {
-        let c = std::cmp::min(count_zero_bits(&self.bits), (self.bits.len() * 8) - 1) as f64;
-        let m = (self.bits.len() * 8) as f64;
-        (c / m).ln() / (2_f64 * (1_f64 - (1_f64 / m)).ln())
-    }
+            pub fn clear(&mut self) {
+                self.bits.iter_mut().for_each(|v| *v = 0);
+            }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.bits
-    }
+            pub fn size(&self) -> f64 {
+                let c = std::cmp::min(count_zero_bits(&self.bits, $size), ($size * 8) - 1) as f64;
+                let m = ($size * 8) as f64;
+                (c / m).ln() / (2_f64 * (1_f64 - (1_f64 / m)).ln())
+            }
+
+            pub fn as_bytes(&self) -> &[u8] {
+                &self.bits
+            }
+        }
+
+        impl From<Vec<u8>> for $name {
+            fn from(bits: Vec<u8>) -> Self {
+                Self::from(&bits[..])
+            }
+        }
+
+        impl From<&[u8]> for $name {
+            fn from(bits: &[u8]) -> Self {
+                let mut f = Self::new();
+                f.bits.copy_from_slice(bits);
+                f
+            }
+        }
+
+        impl From<[u8; $size]> for $name {
+            fn from(bits: [u8; $size]) -> Self {
+                Self { bits }
+            }
+        }
+
+        impl From<&str> for $name {
+            fn from(s: &str) -> Self {
+                s.as_bytes().into()
+            }
+        }
+
+        impl From<String> for $name {
+            fn from(s: String) -> Self {
+                s.into_bytes().into()
+            }
+        }
+    };
 }
 
-fn has_bits(key: &[u8], bits: &[u8]) -> bool {
+bloom_filter!(BloomFilter128, 128);
+bloom_filter!(BloomFilter256, 256);
+
+fn has_bits(key: &[u8], bits: &[u8], len: usize) -> bool {
     let mut idx1 = (key[0] as usize) | ((key[1] as usize) << 8);
     let mut idx2 = (key[2] as usize) | ((key[3] as usize) << 8);
-    idx1 %= bits.len() * 8;
-    idx2 %= bits.len() * 8;
+    idx1 %= len * 8;
+    idx2 %= len * 8;
     bits[idx1 / 8] & (1 << (idx1 & 7)) != 0 && bits[idx2 / 8] & (1 << (idx2 & 7)) != 0
 }
 
-fn set_bits(key: &[u8], bits: &mut [u8]) {
+fn set_bits(key: &[u8], bits: &mut [u8], len: usize) {
     let mut idx1 = (key[0] as usize) | ((key[1] as usize) << 8);
     let mut idx2 = (key[2] as usize) | ((key[3] as usize) << 8);
-    idx1 %= bits.len() * 8;
-    idx2 %= bits.len() * 8;
+    idx1 %= len * 8;
+    idx2 %= len * 8;
     bits[idx1 / 8] |= 1 << (idx1 & 7);
     bits[idx2 / 8] |= 1 << (idx2 & 7);
 }
 
-fn count_zero_bits(bits: &[u8]) -> usize {
+fn count_zero_bits(bits: &[u8], len: usize) -> usize {
+    const BIT_COUNTS: [usize; 16] = [
+        // 0000, 0001, 0010, 0011, 0100, 0101, 0110, 0111,
+        // 1000, 1001, 1010, 1011, 1100, 1101, 1110, 1111
+        4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0,
+    ];
+
     let mut ret = 0;
-    for v in bits {
-        ret += BIT_COUNTS[(*v & 0xf) as usize];
-        ret += BIT_COUNTS[((*v >> 4) & 0xf) as usize];
+    for i in 0..len {
+        ret += BIT_COUNTS[(bits[i] & 0xf) as usize];
+        ret += BIT_COUNTS[((bits[i] >> 4) & 0xf) as usize];
     }
     ret
 }
 
-impl From<Vec<u8>> for BloomFilter {
-    fn from(bits: Vec<u8>) -> BloomFilter {
-        BloomFilter { bits }
-    }
-}
-
-impl From<&[u8]> for BloomFilter {
-    fn from(bits: &[u8]) -> BloomFilter {
-        bits.to_vec().into()
-    }
-}
-
-impl From<&str> for BloomFilter {
-    fn from(s: &str) -> BloomFilter {
-        s.as_bytes().into()
-    }
-}
-
-impl From<String> for BloomFilter {
-    fn from(s: String) -> BloomFilter {
-        s.into_bytes().into()
-    }
-}
-
 #[cfg(test)]
 mod test {
+    #![allow(unused)]
     use super::*;
     use crate::sha1::Sha1Hash;
 
+    bloom_filter!(BloomFilter32, 32);
+    bloom_filter!(BloomFilter4, 4);
+
     #[test]
     fn test_set_and_get() {
-        let mut filter = BloomFilter::new(32);
+        let mut filter = BloomFilter32::new();
         let k1 = Sha1Hash::update(b"test1");
         let k2 = Sha1Hash::update(b"test2");
         let k3 = Sha1Hash::update(b"test3");
@@ -143,14 +142,14 @@ mod test {
 
         for i in 0_u8..4 * 8 {
             let t = [i, 0, i, 0];
-            assert!(!has_bits(&t, &bits));
+            assert!(!has_bits(&t, &bits, 6));
         }
 
         for i in (0_u8..4 * 8).step_by(2) {
             let t = [i, 0, i, 0];
-            assert!(!has_bits(&t, &bits));
-            set_bits(&t, &mut bits);
-            assert!(has_bits(&t, &bits));
+            assert!(!has_bits(&t, &bits, 4));
+            set_bits(&t, &mut bits, 4);
+            assert!(has_bits(&t, &bits, 4));
         }
 
         let compare = [0x55_u8; 4];
@@ -161,11 +160,11 @@ mod test {
     fn test_count_zeroes() {
         let mut bits = [0x00_u8, 0xff, 0x55, 0xaa];
 
-        assert_eq!(count_zero_bits(&bits), 16);
+        assert_eq!(count_zero_bits(&bits, 4), 16);
 
         let t = [4_u8, 0, 4, 0];
-        set_bits(&t, &mut bits);
-        assert_eq!(count_zero_bits(&bits), 15);
+        set_bits(&t, &mut bits, 4);
+        assert_eq!(count_zero_bits(&bits, 4), 15);
 
         let compare = [0x10_u8, 0xff, 0x55, 0xaa];
         assert_eq!(compare, bits);
@@ -174,8 +173,7 @@ mod test {
     #[test]
     fn test_to_from_string() {
         let bits = [0x10_u8, 0xff, 0x55, 0xaa];
-
-        let mut filter: BloomFilter = BloomFilter::from(bits.as_ref());
+        let mut filter = BloomFilter4::from(bits);
         let bits_out = filter.as_bytes();
         assert_eq!(bits_out, bits);
 

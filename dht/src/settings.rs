@@ -1,7 +1,7 @@
 use bencode::{Value, ValueRef};
 use std::collections::BTreeMap;
 
-#[derive(Default)]
+/// structure used to hold configuration options for the DHT
 pub struct DhtSettings {
     pub max_peers_reply: usize,
     pub search_branching: usize,
@@ -26,7 +26,7 @@ pub struct DhtSettings {
     pub max_infohashes_sample_count: usize,
 }
 
-pub(crate) struct Settings {
+pub struct Settings {
     pub dht_settings: DhtSettings,
     pub prefer_verified_node_ids: bool,
 }
@@ -63,6 +63,43 @@ macro_rules! set_bool {
             Value::with_int(if $settings.$key { 1 } else { 0 }),
         );
     };
+}
+
+impl Default for DhtSettings {
+    fn default() -> Self {
+        Self {
+            max_peers_reply: 100,
+            search_branching: 5,
+            max_fail_count: 20,
+            max_torrents: 2000,
+            max_dht_items: 700,
+            max_peers: 500,
+            max_torrent_search_reply: 20,
+            restrict_routing_ips: true,
+            restrict_search_ips: true,
+            extended_routing_table: true,
+            aggressive_lookups: true,
+            privacy_lookups: false,
+            enforce_node_id: false,
+            ignore_dark_internet: true,
+            block_timeout: 5 * 60,
+            block_ratelimit: 5,
+            read_only: false,
+            item_lifetime: 0,
+            upload_rate_limit: 8000,
+            sample_infohashes_interval: 21600,
+            max_infohashes_sample_count: 20,
+        }
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            dht_settings: Default::default(),
+            prefer_verified_node_ids: true,
+        }
+    }
 }
 
 impl DhtSettings {

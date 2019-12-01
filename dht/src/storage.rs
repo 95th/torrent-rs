@@ -3,11 +3,12 @@ use crate::node::NodeId;
 use crate::settings::DhtSettings;
 
 use bencode::Value;
-use common::bloom_filter::BloomFilter;
+use common::bloom_filter::{BloomFilter128, BloomFilter256};
 use common::random;
 use common::sha1::Sha1Hash;
 use common::types::{SequenceNumber, Signature};
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
@@ -52,9 +53,9 @@ pub trait DhtStorage {
         seed: bool,
     );
 
-    fn get_immutable_item(&self, target: &Sha1Hash) -> Option<Value>;
+    fn get_immutable_item(&self, target: &Sha1Hash, item: &mut Value) -> bool;
 
-    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &Value, addr: &IpAddr);
+    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &str, addr: &IpAddr);
 
     fn get_mutable_item_seq(&self, target: &Sha1Hash) -> SequenceNumber;
 
@@ -63,7 +64,8 @@ pub trait DhtStorage {
         target: &Sha1Hash,
         seq: SequenceNumber,
         force_fill: bool,
-    ) -> Option<Value>;
+        item: &mut Value,
+    ) -> bool;
 
     fn put_mutable_item(
         &mut self,
@@ -81,21 +83,42 @@ pub trait DhtStorage {
     fn counters(&self) -> DhtStorageCounter;
 }
 
+#[derive(PartialEq, Eq)]
 struct PeerEntry {
     added: Instant,
     addr: SocketAddr,
     seed: bool,
 }
 
+impl PartialOrd for PeerEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PeerEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.addr
+            .ip()
+            .cmp(&other.addr.ip())
+            .then(self.addr.port().cmp(&other.addr.port()))
+    }
+}
+
+#[derive(Default)]
 struct TorrentEntry {
     name: String,
     peers4: Vec<PeerEntry>,
     peers6: Vec<PeerEntry>,
 }
 
+trait ImmutableItem {
+    fn num_announcers(&self) -> usize;
+}
+
 struct DhtImmutableItem {
     value: String,
-    ips: BloomFilter,
+    ips: BloomFilter128,
     last_seen: Instant,
     num_announcers: usize,
 }
@@ -104,7 +127,7 @@ impl DhtImmutableItem {
     pub fn new(value: String) -> DhtImmutableItem {
         DhtImmutableItem {
             value,
-            ips: BloomFilter::new(128),
+            ips: BloomFilter128::new(),
             last_seen: Instant::now(),
             num_announcers: 0,
         }
@@ -121,6 +144,12 @@ impl DhtImmutableItem {
             self.ips.set(&iphash);
             self.num_announcers += 1;
         }
+    }
+}
+
+impl ImmutableItem for DhtImmutableItem {
+    fn num_announcers(&self) -> usize {
+        self.num_announcers
     }
 }
 
@@ -200,8 +229,8 @@ impl DhtStorage for DefaultDhtStorage<'_> {
         }
 
         if scrape {
-            let mut downloaders = BloomFilter::new(256);
-            let mut seeds = BloomFilter::new(256);
+            let mut downloaders = BloomFilter256::new();
+            let mut seeds = BloomFilter256::new();
 
             for p in peersv {
                 let ip_hash = Sha1Hash::from_address(&p.addr.ip());
@@ -261,7 +290,10 @@ impl DhtStorage for DefaultDhtStorage<'_> {
             seed: false,
         };
 
-        Ok(false)
+        match peersv.binary_search(&requester_entry) {
+            Ok(i) => Ok(&peersv[i].addr != requester),
+            Err(_) => Ok(true),
+        }
     }
 
     fn announce_peer(
@@ -271,15 +303,87 @@ impl DhtStorage for DefaultDhtStorage<'_> {
         name: &str,
         seed: bool,
     ) {
+        let v = if let Some(v) = self.map.get_mut(info_hash) {
+            v
+        } else {
+            if self.map.len() > self.settings.max_torrents {
+                // we're at capacity, drop the announce
+                return;
+            }
+
+            self.counters.torrents += 1;
+            self.map.entry(info_hash.clone()).or_default()
+        };
+
+        // the peer announces a torrent name, and we don't have a name
+        // for this torrent. Store it.
+        if !name.is_empty() && v.name.is_empty() {
+            v.name = name.chars().take(100).collect();
+        }
+
+        let peersv = if endpoint.is_ipv4() {
+            &mut v.peers4
+        } else {
+            &mut v.peers6
+        };
+
+        let peer = PeerEntry {
+            addr: endpoint.clone(),
+            added: Instant::now(),
+            seed,
+        };
+
+        match peersv.binary_search(&peer) {
+            Ok(i) if &peersv[i].addr == endpoint => peersv[i] = peer,
+            v => {
+                if peersv.len() >= self.settings.max_peers {
+                    // we're at capacity, drop the announce
+                    return;
+                } else {
+                    let i = v.unwrap_or_else(|x| x);
+                    peersv.insert(i, peer);
+                    self.counters.peers += 1;
+                }
+            }
+        }
         unimplemented!()
     }
 
-    fn get_immutable_item(&self, target: &Sha1Hash) -> Option<Value> {
-        unimplemented!()
+    fn get_immutable_item(&self, target: &Sha1Hash, item: &mut Value) -> bool {
+        if let Some(dht) = self.immutable_table.get(target) {
+            if let Some(dict) = item.as_dict_mut() {
+                if let Ok(v) = Value::decode(dht.value.as_bytes()) {
+                    dict.insert("v".to_string(), v);
+                } else {
+                    debug_assert!(false, "Unable to decode");
+                }
+            } else {
+                debug_assert!(false, "item is not a dict");
+            }
+            true
+        } else {
+            false
+        }
     }
 
-    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &Value, addr: &IpAddr) {
-        unimplemented!()
+    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &str, addr: &IpAddr) {
+        debug_assert!(!self.node_ids.is_empty());
+        let mut i = self.immutable_table.get_mut(target);
+        if i.is_none() {
+            if self.immutable_table.len() >= self.settings.max_dht_items {
+                let (k, _) = pick_least_imp(&self.node_ids, &self.immutable_table).unwrap();
+                let k = k.clone();
+                self.immutable_table.remove(&k);
+                self.counters.immutable_data -= 1;
+            }
+
+            let to_add = DhtImmutableItem::new(item.to_owned());
+            self.immutable_table.insert(target.clone(), to_add);
+            i = self.immutable_table.get_mut(target);
+            self.counters.immutable_data += 1;
+        }
+
+        i.unwrap().touch_item(addr);
     }
 
     fn get_mutable_item_seq(&self, target: &Sha1Hash) -> SequenceNumber {
@@ -291,7 +395,8 @@ impl DhtStorage for DefaultDhtStorage<'_> {
         target: &Sha1Hash,
         seq: SequenceNumber,
         force_fill: bool,
-    ) -> Option<Value> {
+        item: &mut Value,
+    ) -> bool {
         unimplemented!()
     }
 
@@ -317,4 +422,20 @@ impl DhtStorage for DefaultDhtStorage<'_> {
     fn counters(&self) -> DhtStorageCounter {
         unimplemented!()
     }
+}
+
+fn pick_least_imp<'a, T: ImmutableItem>(
+    node_ids: &[NodeId],
+    table: &'a HashMap<NodeId, T>,
+) -> Option<(&'a NodeId, &'a T)> {
+    table.iter().min_by(|(n1, t1), (n2, t2)| {
+        let dist_1 = crate::node::min_distance_exp(n1, node_ids);
+        let dist_2 = crate::node::min_distance_exp(n2, node_ids);
+
+        if t1.num_announcers() / 5 - dist_1 < t2.num_announcers() / 5 - dist_2 {
+            Ordering::Less
+        } else {
+            Ordering::Greater
+        }
+    })
 }

@@ -8,28 +8,30 @@ pub struct Sha1Hash {
 }
 
 impl Sha1Hash {
-    pub const fn new() -> Sha1Hash {
-        Sha1Hash { data: [0; SIZE] }
+    pub const fn new() -> Self {
+        Self::min()
     }
 
-    pub const fn max() -> Sha1Hash {
-        Sha1Hash {
-            data: [std::u8::MAX; SIZE],
+    pub const fn max() -> Self {
+        Self {
+            data: [u8::max_value(); SIZE],
         }
     }
 
-    pub const fn min() -> Sha1Hash {
-        Sha1Hash::new()
+    pub const fn min() -> Self {
+        Self {
+            data: [u8::min_value(); SIZE],
+        }
     }
 
-    pub fn update(bytes: &[u8]) -> Sha1Hash {
+    pub fn update(bytes: &[u8]) -> Self {
         let mut h = sha1::Sha1::new();
         h.update(bytes);
         let digest = h.digest();
         digest.bytes().into()
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Sha1Hash {
+    pub fn from_bytes(bytes: &[u8]) -> Self {
         assert_eq!(bytes.len(), SIZE);
         let mut buf = [0; SIZE];
         buf.copy_from_slice(bytes);
@@ -82,18 +84,19 @@ impl Sha1Hash {
 }
 
 impl From<&[u8; SIZE]> for Sha1Hash {
-    fn from(data: &[u8; SIZE]) -> Sha1Hash {
-        Sha1Hash { data: data.clone() }
+    fn from(data: &[u8; SIZE]) -> Self {
+        Sha1Hash::from(*data)
     }
 }
 
 impl From<[u8; SIZE]> for Sha1Hash {
-    fn from(data: [u8; SIZE]) -> Sha1Hash {
+    fn from(data: [u8; SIZE]) -> Self {
         Sha1Hash { data }
     }
 }
 
 impl std::ops::ShlAssign<usize> for Sha1Hash {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn shl_assign(&mut self, mut shift: usize) {
         let shift_bytes = shift / 8;
         if shift_bytes >= SIZE {
@@ -121,7 +124,7 @@ impl std::ops::ShlAssign<usize> for Sha1Hash {
             let mut carry = 0_u8;
             for i in (0..SIZE).rev() {
                 let last_carry = carry;
-                carry = (self.data[i] & 0xff << (8 - shift)) >> 8 - shift;
+                carry = (self.data[i] & 0xff << (8 - shift)) >> (8 - shift);
                 self.data[i] <<= shift;
                 self.data[i] |= last_carry;
             }
@@ -130,6 +133,7 @@ impl std::ops::ShlAssign<usize> for Sha1Hash {
 }
 
 impl std::ops::ShrAssign<usize> for Sha1Hash {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn shr_assign(&mut self, mut shift: usize) {
         let shift_bytes = shift / 8;
         if shift_bytes >= SIZE {
@@ -155,7 +159,7 @@ impl std::ops::ShrAssign<usize> for Sha1Hash {
             let mut carry = 0_u8;
             for i in 0..SIZE {
                 let last_carry = carry;
-                carry = (self.data[i] & 0xff >> (8 - shift)) << 8 - shift;
+                carry = (self.data[i] & 0xff >> (8 - shift)) << (8 - shift);
                 self.data[i] >>= shift;
                 self.data[i] |= last_carry;
             }
@@ -187,45 +191,67 @@ impl std::ops::IndexMut<usize> for Sha1Hash {
 }
 
 macro_rules! impl_binary_op {
-    ($op: ident, $op_fn: ident, $op_assign: ident, $op_assign_fn: ident, $sign: tt) => {
-        impl std::ops::$op_assign<&Sha1Hash> for Sha1Hash {
-            fn $op_assign_fn(&mut self, other: &Sha1Hash) {
+    ($op: ident, $op_fn: ident, $op_assign: ident, $op_assign_fn: ident, $sign: tt, $sign_assign: tt) => {
+        impl std::ops::$op_assign<&Self> for Sha1Hash {
+            fn $op_assign_fn(&mut self, other: &Self) {
                 self.data
                     .iter_mut()
                     .zip(other.data.iter())
-                    .for_each(|(a, b)| *a $sign b);
+                    .for_each(|(a, b)| *a $sign_assign b);
             }
         }
 
         impl std::ops::$op_assign for Sha1Hash {
-            fn $op_assign_fn(&mut self, other: Sha1Hash) {
-                *self $sign &other;
+            fn $op_assign_fn(&mut self, other: Self) {
+                *self $sign_assign &other;
             }
         }
 
         impl std::ops::$op for Sha1Hash {
-            type Output = Sha1Hash;
+            type Output = Self;
 
-            fn $op_fn(mut self, other: Sha1Hash) -> Sha1Hash {
-                self $sign other;
+            fn $op_fn(mut self, other: Self) -> Self {
+                self $sign_assign other;
                 self
             }
         }
 
-        impl std::ops::$op<&Sha1Hash> for Sha1Hash {
+        impl std::ops::$op<&Self> for Sha1Hash {
+            type Output = Self;
+
+            fn $op_fn(mut self, other: &Self) -> Self {
+                self $sign_assign other;
+                self
+            }
+        }
+
+        impl std::ops::$op for &Sha1Hash {
             type Output = Sha1Hash;
 
-            fn $op_fn(mut self, other: &Sha1Hash) -> Sha1Hash {
-                self $sign other;
-                self
+            fn $op_fn(self, other: Self) -> Sha1Hash {
+                let mut s = Sha1Hash::new();
+                s.data
+                    .iter_mut()
+                    .zip(self.data.iter())
+                    .zip(other.data.iter())
+                    .for_each(|((a, b), c)| *a = b $sign c);
+                s
+            }
+        }
+
+        impl std::ops::$op<Sha1Hash> for &Sha1Hash {
+            type Output = Sha1Hash;
+
+            fn $op_fn(self, other: Sha1Hash) -> Sha1Hash {
+                self $sign &other
             }
         }
     };
 }
 
-impl_binary_op!(BitXor, bitxor, BitXorAssign, bitxor_assign, ^=);
-impl_binary_op!(BitAnd, bitand, BitAndAssign, bitand_assign, &=);
-impl_binary_op!(BitOr, bitor, BitOrAssign, bitor_assign, |=);
+impl_binary_op!(BitXor, bitxor, BitXorAssign, bitxor_assign, ^, ^=);
+impl_binary_op!(BitAnd, bitand, BitAndAssign, bitand_assign, &, &=);
+impl_binary_op!(BitOr, bitor, BitOrAssign, bitor_assign, |, |=);
 
 #[cfg(test)]
 mod test {
