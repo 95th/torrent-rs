@@ -15,7 +15,8 @@ use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 
 const TIME_DURATION: Duration = Duration::from_secs(30 * 60); // 30 minutes
-
+const SAMPLE_INFOHASHES_INTERVAL_MAX: usize = 21600;
+const INFOHASHES_SAMPLE_COUNT_MAX: usize = 20;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct DhtStorageCounter {
     torrents: i32,
@@ -55,7 +56,7 @@ pub trait DhtStorage {
 
     fn get_immutable_item(&self, target: &Sha1Hash, item: &mut Value) -> bool;
 
-    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &str, addr: &IpAddr);
+    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &[u8], addr: &IpAddr);
 
     fn get_mutable_item_seq(&self, target: &Sha1Hash, seq: &mut SequenceNumber) -> bool;
 
@@ -70,13 +71,15 @@ pub trait DhtStorage {
     fn put_mutable_item(
         &mut self,
         target: &Sha1Hash,
-        item: &Value,
+        buf: &[u8],
         signature: &Signature,
         seq: SequenceNumber,
-        force_fill: bool,
+        pk: &PublicKey,
+        salt: &[u8],
+        address: &IpAddr,
     );
 
-    fn get_infohashes_sample(&self, item: &Value) -> usize;
+    fn get_infohashes_sample(&self, item: &mut Value) -> usize;
 
     fn tick(&mut self);
 
@@ -117,23 +120,45 @@ trait ImmutableItem {
 }
 
 struct DhtImmutableItem {
-    value: String,
+    value: Vec<u8>,
     ips: BloomFilter128,
     last_seen: Instant,
     num_announcers: usize,
     size: usize,
 }
 
+impl Default for DhtImmutableItem {
+    fn default() -> Self {
+        Self {
+            value: vec![],
+            ips: BloomFilter128::default(),
+            last_seen: Instant::now(),
+            num_announcers: 0,
+            size: 0,
+        }
+    }
+}
+
+#[derive(Default)]
 struct DhtMutableItem {
     inner: DhtImmutableItem,
     sig: Signature,
     seq: SequenceNumber,
     key: PublicKey,
-    salt: String,
+    salt: Vec<u8>,
+}
+
+impl DhtMutableItem {
+    pub fn new(value: Vec<u8>) -> Self {
+        Self {
+            inner: DhtImmutableItem::new(value),
+            ..Default::default()
+        }
+    }
 }
 
 impl DhtImmutableItem {
-    pub fn new(value: String) -> DhtImmutableItem {
+    pub fn new(value: Vec<u8>) -> DhtImmutableItem {
         DhtImmutableItem {
             value,
             ips: BloomFilter128::new(),
@@ -143,8 +168,12 @@ impl DhtImmutableItem {
         }
     }
 
-    pub fn set_value(&mut self, value: &str) {
-        self.value = value.to_owned();
+    fn set_value(&mut self, buf: &[u8]) {
+        if self.value.len() != buf.len() {
+            self.value = buf.to_vec();
+        } else {
+            self.value.copy_from_slice(buf);
+        }
     }
 
     pub fn touch_item(&mut self, addr: &IpAddr) {
@@ -160,6 +189,12 @@ impl DhtImmutableItem {
 impl ImmutableItem for DhtImmutableItem {
     fn num_announcers(&self) -> usize {
         self.num_announcers
+    }
+}
+
+impl ImmutableItem for DhtMutableItem {
+    fn num_announcers(&self) -> usize {
+        self.inner.num_announcers
     }
 }
 
@@ -356,13 +391,12 @@ impl DhtStorage for DefaultDhtStorage<'_> {
                 }
             }
         }
-        unimplemented!()
     }
 
     fn get_immutable_item(&self, target: &Sha1Hash, item: &mut Value) -> bool {
         if let Some(dht) = self.immutable_table.get(target) {
             if let Some(dict) = item.as_dict_mut() {
-                if let Ok(v) = Value::decode(dht.value.as_bytes()) {
+                if let Ok(v) = Value::decode(&dht.value) {
                     dict.insert("v".to_string(), v);
                 } else {
                     debug_assert!(false, "Unable to decode");
@@ -376,7 +410,7 @@ impl DhtStorage for DefaultDhtStorage<'_> {
         }
     }
 
-    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &str, addr: &IpAddr) {
+    fn put_immutable_item(&mut self, target: &Sha1Hash, item: &[u8], addr: &IpAddr) {
         debug_assert!(!self.node_ids.is_empty());
         let mut i = self.immutable_table.get_mut(target);
         if i.is_none() {
@@ -416,7 +450,7 @@ impl DhtStorage for DefaultDhtStorage<'_> {
             if let Some(dict) = item.as_dict_mut() {
                 dict.insert("seq".to_string(), Value::with_int(f.seq));
                 if force_fill || 0 <= seq && seq < f.seq {
-                    dict.insert("v".to_string(), f.inner.value.parse().unwrap());
+                    dict.insert("v".to_string(), Value::decode(&f.inner.value).unwrap());
                     dict.insert("sig".to_string(), Value::from(&f.sig[..]));
                     dict.insert("k".to_string(), Value::from(&f.key[..]));
                 }
@@ -432,15 +466,54 @@ impl DhtStorage for DefaultDhtStorage<'_> {
     fn put_mutable_item(
         &mut self,
         target: &Sha1Hash,
-        item: &Value,
+        buf: &[u8],
         signature: &Signature,
         seq: SequenceNumber,
-        force_fill: bool,
+        pk: &PublicKey,
+        salt: &[u8],
+        addr: &IpAddr,
     ) {
-        unimplemented!()
+        debug_assert!(!self.node_ids.is_empty());
+        match self.mutable_table.get_mut(target) {
+            Some(item) => {
+                if item.seq < seq {
+                    item.inner.set_value(buf);
+                    item.seq = seq;
+                    item.sig = signature.clone();
+                }
+                item.inner.touch_item(addr);
+            }
+            None => {
+                // this is the case where we don't have an item in this slot
+                // make sure we don't add too many items
+                if self.mutable_table.len() >= self.settings.max_dht_items {
+                    let (key, _) = pick_least_imp(&self.node_ids, &self.mutable_table).unwrap();
+                    let key = key.clone();
+                    self.mutable_table.remove(&key);
+                    self.counters.mutable_data += 1;
+                }
+                let mut item = DhtMutableItem::new(buf.to_vec());
+                item.seq = seq;
+                item.salt = salt.to_vec();
+                item.sig = signature.clone();
+                item.key = pk.clone();
+                item.inner.touch_item(addr);
+
+                self.mutable_table.insert(target.clone(), item);
+                self.counters.mutable_data += 1;
+            }
+        }
     }
 
-    fn get_infohashes_sample(&self, item: &Value) -> usize {
+    fn get_infohashes_sample(&self, item: &mut Value) -> usize {
+        let dict = item.as_dict_mut().unwrap();
+        let interval = common::clamp(
+            self.settings.sample_infohashes_interval,
+            0,
+            SAMPLE_INFOHASHES_INTERVAL_MAX,
+        );
+        dict.insert("interval".to_string(), Value::with_int(interval as i64));
+        dict.insert("num".to_string(), Value::with_int(self.map.len() as i64));
         unimplemented!()
     }
 

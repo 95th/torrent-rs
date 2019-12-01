@@ -8,8 +8,5 @@ pub fn create_seed() -> [u8; 32] {
 }
 
 pub fn create_keypair() -> (PublicKey, SecretKey) {
-    let pk = [0; 32];
-    let sk = [0; 64];
-
-    (pk, sk)
+    (PublicKey::default(), SecretKey::default())
 }

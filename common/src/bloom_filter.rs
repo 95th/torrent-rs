@@ -6,6 +6,12 @@ macro_rules! bloom_filter {
             bits: [u8; $size],
         }
 
+        impl Default for $ty {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
         impl $ty {
             pub fn new() -> Self {
                 Self { bits: [0; $size] }
