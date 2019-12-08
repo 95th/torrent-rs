@@ -12,3 +12,4 @@ bencode = { path = "bencode" }
 dht = { path = "dht" }
 common = { path = "common" }
 bitflags = "1.1"
+defaults = "0.1.0"

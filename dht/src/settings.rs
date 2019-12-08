@@ -1,4 +1,5 @@
 use bencode::{Value, ValueRef};
+use defaults::Defaults;
 use std::collections::BTreeMap;
 
 /// structure used to hold configuration options for the DHT
@@ -26,8 +27,10 @@ pub struct DhtSettings {
     pub max_infohashes_sample_count: usize,
 }
 
+#[derive(Defaults)]
 pub struct Settings {
     pub dht_settings: DhtSettings,
+    #[def = "true"]
     pub prefer_verified_node_ids: bool,
 }
 
@@ -89,15 +92,6 @@ impl Default for DhtSettings {
             upload_rate_limit: 8000,
             sample_infohashes_interval: 21600,
             max_infohashes_sample_count: 20,
-        }
-    }
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            dht_settings: Default::default(),
-            prefer_verified_node_ids: true,
         }
     }
 }

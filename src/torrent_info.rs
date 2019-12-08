@@ -1,4 +1,5 @@
 use crate::fs::FileStorage;
+use defaults::Defaults;
 
 #[derive(Default)]
 pub struct TorrentInfo {
@@ -14,23 +15,20 @@ impl TorrentInfo {
 /// This object holds configuration options for limits to use when loading
 /// torrents. They are meant to prevent loading potentially malicious torrents
 /// that cause excessive memory allocations.
+#[derive(Defaults)]
 pub struct TorrentLimits {
+    #[def = "6000000"]
     pub max_buf_size: usize,
-    pub max_pieces: usize,
-    pub max_decode_depth: usize,
-    pub max_decode_tokens: usize,
-}
 
-impl Default for TorrentLimits {
-    fn default() -> Self {
-        Self {
-            max_buf_size: 6000000,
-            // the max number of pieces allowed in the torrent
-            max_pieces: 0x100000,
-            // the max recursion depth in the bdecoded structure
-            max_decode_depth: 100,
-            // the max number of bdecode tokens
-            max_decode_tokens: 2000000,
-        }
-    }
+    /// the max number of pieces allowed in the torrent
+    #[def = "0x100000"]
+    pub max_pieces: usize,
+
+    /// the max recursion depth in the bdecoded structure
+    #[def = "100"]
+    pub max_decode_depth: usize,
+
+    /// the max number of bdecode tokens
+    #[def = "2000000"]
+    pub max_decode_tokens: usize,
 }

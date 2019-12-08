@@ -7,6 +7,7 @@ use common::bloom_filter::{BloomFilter128, BloomFilter256};
 use common::random;
 use common::sha1::Sha1Hash;
 use common::types::{PublicKey, SequenceNumber, Signature};
+use defaults::Defaults;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -17,6 +18,7 @@ use std::time::{Duration, Instant};
 const TIME_DURATION: Duration = Duration::from_secs(30 * 60); // 30 minutes
 const SAMPLE_INFOHASHES_INTERVAL_MAX: usize = 21600;
 const INFOHASHES_SAMPLE_COUNT_MAX: usize = 20;
+
 #[derive(Debug, Default, Copy, Clone)]
 pub struct DhtStorageCounter {
     torrents: i32,
@@ -119,24 +121,14 @@ trait ImmutableItem {
     fn num_announcers(&self) -> usize;
 }
 
+#[derive(Defaults)]
 struct DhtImmutableItem {
     value: Vec<u8>,
     ips: BloomFilter128,
+    #[def = "Instant::now()"]
     last_seen: Instant,
     num_announcers: usize,
     size: usize,
-}
-
-impl Default for DhtImmutableItem {
-    fn default() -> Self {
-        Self {
-            value: vec![],
-            ips: BloomFilter128::default(),
-            last_seen: Instant::now(),
-            num_announcers: 0,
-            size: 0,
-        }
-    }
 }
 
 #[derive(Default)]
