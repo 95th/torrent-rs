@@ -9,120 +9,68 @@ use std::io;
 pub enum ValueRef<'a> {
     Int(i64),
     Bytes(&'a [u8]),
-    List(Vec<ValueRef<'a>>),
-    Dict(BTreeMap<&'a str, ValueRef<'a>>),
+    List(Vec<Self>),
+    Dict(BTreeMap<&'a str, Self>),
 }
 
 impl<'a> ValueRef<'a> {
-    pub fn with_int(v: i64) -> ValueRef<'static> {
-        ValueRef::Int(v)
+    pub fn with_int(v: i64) -> Self {
+        Self::Int(v)
     }
 
-    pub fn with_str(s: &str) -> ValueRef {
-        ValueRef::Bytes(s.as_bytes())
+    pub fn with_str(s: &'a str) -> Self {
+        Self::Bytes(s.as_bytes())
     }
 
-    pub fn with_list(list: Vec<ValueRef>) -> ValueRef {
-        ValueRef::List(list)
+    pub fn with_list(list: Vec<Self>) -> Self {
+        Self::List(list)
     }
 
-    pub fn with_dict<'t>(dict: BTreeMap<&'t str, ValueRef<'t>>) -> ValueRef<'t> {
-        ValueRef::Dict(dict)
+    pub fn with_dict(dict: BTreeMap<&'a str, Self>) -> Self {
+        Self::Dict(dict)
     }
 
-    pub fn is_string(&self) -> bool {
-        if let ValueRef::Bytes(_) = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_int(&self) -> bool {
-        if let ValueRef::Int(_) = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_list(&self) -> bool {
-        if let ValueRef::List(_) = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_dict(&self) -> bool {
-        if let ValueRef::Dict(_) = self {
-            true
-        } else {
-            false
-        }
+    impl_is_ty! {
+        is_string == Bytes,
+        is_int == Int,
+        is_list == List,
+        is_dict == Dict,
     }
 
     pub fn as_int(&self) -> Option<i64> {
-        match self {
-            ValueRef::Int(n) => Some(*n),
-            _ => None,
-        }
+        inner_if!(self == Int).map(|n| *n)
     }
 
     pub fn as_str(&self) -> Option<&'a str> {
-        match self {
-            ValueRef::Bytes(buf) => std::str::from_utf8(buf).ok(),
-            _ => None,
-        }
+        inner_if!(self == Bytes).and_then(|buf| std::str::from_utf8(buf).ok())
     }
 
     pub fn as_bytes(&self) -> Option<&'a [u8]> {
-        match self {
-            ValueRef::Bytes(buf) => Some(buf),
-            _ => None,
-        }
+        inner_if!(self == Bytes)
     }
 
-    pub fn as_list(&self) -> Option<&[ValueRef<'a>]> {
-        match self {
-            ValueRef::List(list) => Some(list),
-            _ => None,
-        }
+    pub fn as_list(&self) -> Option<&[Self]> {
+        inner_if!(self == List)
     }
 
-    pub fn as_list_mut(&mut self) -> Option<&mut Vec<ValueRef<'a>>> {
-        match self {
-            ValueRef::List(list) => Some(list),
-            _ => None,
-        }
+    pub fn as_list_mut(&mut self) -> Option<&mut Vec<Self>> {
+        inner_if!(self == List)
     }
 
-    pub fn into_list(self) -> Option<Vec<ValueRef<'a>>> {
-        match self {
-            ValueRef::List(list) => Some(list),
-            _ => None,
-        }
+    pub fn into_list(self) -> Option<Vec<Self>> {
+        inner_if!(self == List)
     }
 
-    pub fn as_dict(&self) -> Option<&BTreeMap<&'a str, ValueRef<'a>>> {
-        match self {
-            ValueRef::Dict(dict) => Some(dict),
-            _ => None,
-        }
+    pub fn as_dict(&self) -> Option<&BTreeMap<&'a str, Self>> {
+        inner_if!(self == Dict)
     }
 
-    pub fn as_dict_mut(&mut self) -> Option<&mut BTreeMap<&'a str, ValueRef<'a>>> {
-        match self {
-            ValueRef::Dict(dict) => Some(dict),
-            _ => None,
-        }
+    pub fn as_dict_mut(&mut self) -> Option<&mut BTreeMap<&'a str, Self>> {
+        inner_if!(self == Dict)
     }
 
-    pub fn into_dict(self) -> Option<BTreeMap<&'a str, ValueRef<'a>>> {
-        match self {
-            ValueRef::Dict(dict) => Some(dict),
-            _ => None,
-        }
+    pub fn into_dict(self) -> Option<BTreeMap<&'a str, Self>> {
+        inner_if!(self == Dict)
     }
 
     pub fn to_vec(&self) -> Vec<u8> {
@@ -131,12 +79,12 @@ impl<'a> ValueRef<'a> {
         v
     }
 
-    pub fn dict_find(&self, key: &str) -> Option<&ValueRef<'a>> {
+    pub fn dict_find(&self, key: &str) -> Option<&Self> {
         let dict = self.as_dict()?;
         dict.get(key)
     }
 
-    pub fn dict_find_int(&self, key: &str) -> Option<&ValueRef<'a>> {
+    pub fn dict_find_int(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_int() {
             Some(n)
@@ -149,7 +97,7 @@ impl<'a> ValueRef<'a> {
         self.dict_find_int(key)?.as_int()
     }
 
-    pub fn dict_find_str(&self, key: &str) -> Option<&ValueRef<'a>> {
+    pub fn dict_find_str(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_string() {
             Some(n)
@@ -162,7 +110,7 @@ impl<'a> ValueRef<'a> {
         self.dict_find_str(key)?.as_str()
     }
 
-    pub fn dict_find_list(&self, key: &str) -> Option<&ValueRef<'a>> {
+    pub fn dict_find_list(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_list() {
             Some(n)
@@ -171,11 +119,11 @@ impl<'a> ValueRef<'a> {
         }
     }
 
-    pub fn dict_find_list_value(&self, key: &str) -> Option<&[ValueRef<'a>]> {
+    pub fn dict_find_list_value(&self, key: &str) -> Option<&[Self]> {
         self.dict_find_list(key)?.as_list()
     }
 
-    pub fn dict_find_dict(&self, key: &str) -> Option<&ValueRef<'a>> {
+    pub fn dict_find_dict(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_dict() {
             Some(n)
@@ -188,7 +136,7 @@ impl<'a> ValueRef<'a> {
         Some(self.as_dict()?.len())
     }
 
-    pub fn list_at(&self, index: usize) -> Option<&ValueRef<'a>> {
+    pub fn list_at(&self, index: usize) -> Option<&Self> {
         let list = self.as_list()?;
         list.get(index)
     }
@@ -205,7 +153,7 @@ impl<'a> ValueRef<'a> {
         Some(self.as_list()?.len())
     }
 
-    pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+    pub fn encode<W: io::Write>(&'a self, w: &mut W) -> io::Result<()> {
         enum Token<'a> {
             B(&'a ValueRef<'a>),
             S(&'a str),
@@ -213,24 +161,23 @@ impl<'a> ValueRef<'a> {
         }
 
         use Token::*;
-        use ValueRef::*;
         let mut stack = vec![B(self)];
         while !stack.is_empty() {
             match stack.pop().unwrap() {
                 B(v) => match v {
-                    Int(n) => {
+                    Self::Int(n) => {
                         write!(w, "i{}e", n)?;
                     }
-                    Bytes(v) => {
+                    Self::Bytes(v) => {
                         write!(w, "{}:", v.len())?;
                         w.write_all(&v)?;
                     }
-                    List(v) => {
+                    Self::List(v) => {
                         write!(w, "l")?;
                         stack.push(E);
                         stack.extend(v.iter().rev().map(|e| B(e)));
                     }
-                    Dict(m) => {
+                    Self::Dict(m) => {
                         write!(w, "d")?;
                         stack.push(E);
                         for (k, v) in m.iter().rev() {
@@ -250,15 +197,15 @@ impl<'a> ValueRef<'a> {
         Ok(())
     }
 
-    pub fn decode(bytes: &[u8]) -> Result<ValueRef> {
+    pub fn decode(bytes: &'a [u8]) -> Result<Self> {
         Self::decode_with_limits(bytes, None, None)
     }
 
     pub fn decode_with_limits(
-        bytes: &[u8],
+        bytes: &'a [u8],
         depth_limit: Option<usize>,
         item_limit: Option<usize>,
-    ) -> Result<ValueRef> {
+    ) -> Result<Self> {
         enum Kind {
             Dict(usize),
             List(usize),
@@ -278,7 +225,7 @@ impl<'a> ValueRef<'a> {
                             vec.push(v_stack.pop().unwrap());
                         }
                         vec.reverse();
-                        v_stack.push(ValueRef::List(vec));
+                        v_stack.push(Self::List(vec));
                     }
                     Some(Kind::Dict(len)) => {
                         if (v_stack.len() - len) % 2 != 0 {
@@ -293,7 +240,7 @@ impl<'a> ValueRef<'a> {
                                 return Err(Error::ParseDict);
                             }
                         }
-                        v_stack.push(ValueRef::Dict(map))
+                        v_stack.push(Self::Dict(map))
                     }
                     None => return Err(Error::InvalidChar(b'e')),
                 },
@@ -317,11 +264,11 @@ impl<'a> ValueRef<'a> {
                             rdr.move_back();
                             let len = rdr.read_int_until(b':')?;
                             let value = rdr.read_exact(len as usize)?;
-                            v_stack.push(ValueRef::Bytes(value));
+                            v_stack.push(Self::Bytes(value));
                         }
                         b'i' => {
                             let n = rdr.read_int_until(b'e')?;
-                            v_stack.push(ValueRef::Int(n))
+                            v_stack.push(Self::Int(n))
                         }
                         b'l' => c_stack.push(Kind::List(v_stack.len())),
                         b'd' => c_stack.push(Kind::Dict(v_stack.len())),
@@ -341,8 +288,8 @@ impl<'a> ValueRef<'a> {
 }
 
 impl<'a> From<&'a [u8]> for ValueRef<'a> {
-    fn from(value: &[u8]) -> ValueRef {
-        ValueRef::Bytes(value)
+    fn from(value: &'a [u8]) -> Self {
+        Self::Bytes(value)
     }
 }
 

@@ -1,3 +1,26 @@
+macro_rules! impl_is_ty {
+    ($($fn: ident == $type: ident,)*) => {
+        $(
+            pub fn $fn(&self) -> bool {
+                if let Self::$type(_) = self {
+                    true
+                } else {
+                    false
+                }
+            }
+        )*
+    }
+}
+
+macro_rules! inner_if {
+    ($self: ident == $ty: ident) => {
+        match $self {
+            Self::$ty(inner) => Some(inner),
+            _ => None,
+        }
+    };
+}
+
 mod error;
 mod reader;
 mod value;

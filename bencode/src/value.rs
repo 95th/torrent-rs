@@ -9,124 +9,72 @@ use std::io;
 pub enum Value {
     Int(i64),
     Bytes(Vec<u8>),
-    List(Vec<Value>),
-    Dict(BTreeMap<String, Value>),
+    List(Vec<Self>),
+    Dict(BTreeMap<String, Self>),
 }
 
 impl Value {
-    pub fn with_int(v: i64) -> Value {
-        Value::Int(v)
+    pub fn with_int(v: i64) -> Self {
+        Self::Int(v)
     }
 
-    pub fn with_str(s: &str) -> Value {
-        Value::Bytes(s.as_bytes().to_vec())
+    pub fn with_str(s: &str) -> Self {
+        Self::Bytes(s.as_bytes().to_vec())
     }
 
-    pub fn with_string(s: String) -> Value {
-        Value::Bytes(s.into_bytes())
+    pub fn with_string(s: String) -> Self {
+        Self::Bytes(s.into_bytes())
     }
 
-    pub fn with_list(list: Vec<Value>) -> Value {
-        Value::List(list)
+    pub fn with_list(list: Vec<Self>) -> Self {
+        Self::List(list)
     }
 
-    pub fn with_dict(map: BTreeMap<String, Value>) -> Value {
-        Value::Dict(map)
+    pub fn with_dict(map: BTreeMap<String, Self>) -> Self {
+        Self::Dict(map)
     }
 
-    pub fn is_string(&self) -> bool {
-        if let Value::Bytes(_) = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_int(&self) -> bool {
-        if let Value::Int(_) = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_list(&self) -> bool {
-        if let Value::List(_) = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_dict(&self) -> bool {
-        if let Value::Dict(_) = self {
-            true
-        } else {
-            false
-        }
+    impl_is_ty! {
+        is_string == Bytes,
+        is_int == Int,
+        is_list == List,
+        is_dict == Dict,
     }
 
     pub fn as_int(&self) -> Option<i64> {
-        match self {
-            Value::Int(n) => Some(*n),
-            _ => None,
-        }
+        inner_if!(self == Int).map(|n| *n)
     }
 
     pub fn as_str(&self) -> Option<&str> {
-        match self {
-            Value::Bytes(buf) => std::str::from_utf8(buf).ok(),
-            _ => None,
-        }
+        inner_if!(self == Bytes).and_then(|buf| std::str::from_utf8(buf).ok())
     }
 
     pub fn as_bytes(&self) -> Option<&[u8]> {
-        match self {
-            Value::Bytes(buf) => Some(buf),
-            _ => None,
-        }
+        inner_if!(self == Bytes)
     }
 
-    pub fn as_list(&self) -> Option<&[Value]> {
-        match self {
-            Value::List(list) => Some(list),
-            _ => None,
-        }
+    pub fn as_list(&self) -> Option<&[Self]> {
+        inner_if!(self == List)
     }
 
-    pub fn as_list_mut(&mut self) -> Option<&mut Vec<Value>> {
-        match self {
-            Value::List(list) => Some(list),
-            _ => None,
-        }
+    pub fn as_list_mut(&mut self) -> Option<&mut Vec<Self>> {
+        inner_if!(self == List)
     }
 
-    pub fn into_list(self) -> Option<Vec<Value>> {
-        match self {
-            Value::List(list) => Some(list),
-            _ => None,
-        }
+    pub fn into_list(self) -> Option<Vec<Self>> {
+        inner_if!(self == List)
     }
 
-    pub fn as_dict(&self) -> Option<&BTreeMap<String, Value>> {
-        match self {
-            Value::Dict(dict) => Some(dict),
-            _ => None,
-        }
+    pub fn as_dict(&self) -> Option<&BTreeMap<String, Self>> {
+        inner_if!(self == Dict)
     }
 
-    pub fn as_dict_mut(&mut self) -> Option<&mut BTreeMap<String, Value>> {
-        match self {
-            Value::Dict(dict) => Some(dict),
-            _ => None,
-        }
+    pub fn as_dict_mut(&mut self) -> Option<&mut BTreeMap<String, Self>> {
+        inner_if!(self == Dict)
     }
 
-    pub fn into_dict(self) -> Option<BTreeMap<String, Value>> {
-        match self {
-            Value::Dict(dict) => Some(dict),
-            _ => None,
-        }
+    pub fn into_dict(self) -> Option<BTreeMap<String, Self>> {
+        inner_if!(self == Dict)
     }
 
     pub fn to_vec(&self) -> Vec<u8> {
@@ -135,12 +83,12 @@ impl Value {
         v
     }
 
-    pub fn dict_find(&self, key: &str) -> Option<&Value> {
+    pub fn dict_find(&self, key: &str) -> Option<&Self> {
         let dict = self.as_dict()?;
         dict.get(key)
     }
 
-    pub fn dict_find_int(&self, key: &str) -> Option<&Value> {
+    pub fn dict_find_int(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_int() {
             Some(n)
@@ -153,7 +101,7 @@ impl Value {
         self.dict_find_int(key)?.as_int()
     }
 
-    pub fn dict_find_str(&self, key: &str) -> Option<&Value> {
+    pub fn dict_find_str(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_string() {
             Some(n)
@@ -166,7 +114,7 @@ impl Value {
         self.dict_find_str(key)?.as_str()
     }
 
-    pub fn dict_find_list(&self, key: &str) -> Option<&Value> {
+    pub fn dict_find_list(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_list() {
             Some(n)
@@ -175,11 +123,11 @@ impl Value {
         }
     }
 
-    pub fn dict_find_list_value(&self, key: &str) -> Option<&[Value]> {
+    pub fn dict_find_list_value(&self, key: &str) -> Option<&[Self]> {
         self.dict_find_list(key)?.as_list()
     }
 
-    pub fn dict_find_dict(&self, key: &str) -> Option<&Value> {
+    pub fn dict_find_dict(&self, key: &str) -> Option<&Self> {
         let n = self.dict_find(key)?;
         if n.is_dict() {
             Some(n)
@@ -192,7 +140,7 @@ impl Value {
         Some(self.as_dict()?.len())
     }
 
-    pub fn list_at(&self, index: usize) -> Option<&Value> {
+    pub fn list_at(&self, index: usize) -> Option<&Self> {
         let list = self.as_list()?;
         list.get(index)
     }
@@ -210,11 +158,7 @@ impl Value {
     }
 
     fn into_string(self) -> Option<String> {
-        if let Value::Bytes(v) = self {
-            String::from_utf8(v).ok()
-        } else {
-            None
-        }
+        inner_if!(self == Bytes).and_then(|v| String::from_utf8(v).ok())
     }
 
     pub fn encode<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
@@ -225,24 +169,23 @@ impl Value {
         }
 
         use Token::*;
-        use Value::*;
         let mut stack = vec![B(self)];
         while !stack.is_empty() {
             match stack.pop().unwrap() {
                 B(v) => match v {
-                    Int(n) => {
+                    Self::Int(n) => {
                         write!(w, "i{}e", n)?;
                     }
-                    Bytes(v) => {
+                    Self::Bytes(v) => {
                         write!(w, "{}:", v.len())?;
                         w.write_all(&v)?;
                     }
-                    List(v) => {
+                    Self::List(v) => {
                         write!(w, "l")?;
                         stack.push(E);
                         stack.extend(v.iter().rev().map(|e| B(e)));
                     }
-                    Dict(m) => {
+                    Self::Dict(m) => {
                         write!(w, "d")?;
                         stack.push(E);
                         for (k, v) in m.iter().rev() {
@@ -262,7 +205,7 @@ impl Value {
         Ok(())
     }
 
-    pub fn decode(bytes: &[u8]) -> Result<Value> {
+    pub fn decode(bytes: &[u8]) -> Result<Self> {
         Self::decode_with_limits(bytes, None, None)
     }
 
@@ -270,7 +213,7 @@ impl Value {
         bytes: &[u8],
         depth_limit: Option<usize>,
         item_limit: Option<usize>,
-    ) -> Result<Value> {
+    ) -> Result<Self> {
         #[derive(Debug)]
         enum Kind {
             Dict(usize),
@@ -291,7 +234,7 @@ impl Value {
                             vec.push(v_stack.pop().unwrap());
                         }
                         vec.reverse();
-                        v_stack.push(Value::List(vec));
+                        v_stack.push(Self::List(vec));
                     }
                     Some(Kind::Dict(len)) => {
                         if (v_stack.len() - len) % 2 != 0 {
@@ -306,7 +249,7 @@ impl Value {
                                 return Err(Error::ParseDict);
                             }
                         }
-                        v_stack.push(Value::Dict(map))
+                        v_stack.push(Self::Dict(map))
                     }
                     None => return Err(Error::InvalidChar(b'e')),
                 },
@@ -330,11 +273,11 @@ impl Value {
                             rdr.move_back();
                             let len = rdr.read_int_until(b':')?;
                             let value = rdr.read_exact(len as usize)?;
-                            v_stack.push(Value::Bytes(value.to_vec()));
+                            v_stack.push(Self::Bytes(value.to_vec()));
                         }
                         b'i' => {
                             let n = rdr.read_int_until(b'e')?;
-                            v_stack.push(Value::Int(n));
+                            v_stack.push(Self::Int(n));
                         }
                         b'l' => c_stack.push(Kind::List(v_stack.len())),
                         b'd' => c_stack.push(Kind::Dict(v_stack.len())),
@@ -356,20 +299,20 @@ impl Value {
 impl std::str::FromStr for Value {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Value> {
-        Value::decode(s.as_bytes())
+    fn from_str(s: &str) -> Result<Self> {
+        Self::decode(s.as_bytes())
     }
 }
 
 impl From<&[u8]> for Value {
-    fn from(value: &[u8]) -> Value {
-        Value::Bytes(value.to_vec())
+    fn from(value: &[u8]) -> Self {
+        Self::Bytes(value.to_vec())
     }
 }
 
 impl From<Vec<u8>> for Value {
-    fn from(value: Vec<u8>) -> Value {
-        Value::Bytes(value)
+    fn from(value: Vec<u8>) -> Self {
+        Self::Bytes(value)
     }
 }
 
