@@ -5,54 +5,37 @@ use crate::str_utl;
 use crate::torrent_params::TorrentParams;
 
 use common::sha1::Sha1Hash;
-use std::borrow::Cow;
+use url::Url;
 
 pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
-    if !uri.starts_with("magnet:?") {
+    let url = Url::parse(uri)?;
+    if url.scheme() != "magnet" {
         return Err(Error::UnsupportedUrlProtocol);
     }
-    let uri = &uri.as_bytes()[8..];
 
-    let mut display_name = String::new();
     let mut tier = 0;
     let mut has_ih = false;
-    while !uri.is_empty() {
-        let (mut name, rest) = str_utl::split_string(uri, b'=');
-        let (mut value, rest) = str_utl::split_string(rest, b'&');
-
-        let (stripped_name, number) = str_utl::split_string(name, b'.');
-
-        if number.iter().all(|&c| str_utl::is_digit(c)) {
-            name = stripped_name;
-        }
-
-        match name {
+    for (key, value) in url.query_pairs() {
+        match &*key {
             /* Display Name */
-            b"dn" => {
-                display_name = str_utl::unescape_string(value)?;
+            "dn" => {
+                p.name = value.to_string();
             }
             /* Tracker */
-            b"tr" => {
+            "tr" => {
                 if p.tracker_tiers.len() != p.trackers.len() {
                     p.tracker_tiers.resize(p.trackers.len(), 0);
                 }
-                let tracker = str_utl::unescape_string(value)?;
-                p.trackers.push(tracker);
+                p.trackers.push(value.to_string());
                 p.tracker_tiers.push(tier);
                 tier += 1;
             }
             /* Web Seed */
-            b"ws" => {
-                let weebseed = str_utl::unescape_string(value)?;
-                p.url_seeds.push(weebseed);
+            "ws" => {
+                p.url_seeds.push(value.to_string());
             }
-            b"xt" => {
-                let mut value = Cow::Borrowed(value);
-                if value.iter().any(|&c| c == b'%') {
-                    value = Cow::Owned(str_utl::unescape_bytes(&value)?);
-                }
-
-                if !value.starts_with(b"urn:btih:") {
+            "xt" => {
+                if !value.starts_with("urn:btih:") {
                     continue;
                 }
 
@@ -60,10 +43,10 @@ pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
                 let mut s = Sha1Hash::new();
                 match value.len() {
                     40 => {
-                        hex::from_hex(value, s.data_mut());
+                        hex::from_hex(value.as_bytes(), s.data_mut());
                     }
                     32 => {
-                        let ih = str_utl::base32_decode(value);
+                        let ih = str_utl::base32_decode(value.as_bytes());
                         if ih.len() != 20 {
                             return Err(Error::InvalidInfoHash);
                         }
@@ -75,15 +58,16 @@ pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
                 has_ih = true;
             }
             /* Select-Only (files) */
-            b"so" => {
+            "so" => {
                 if value
-                    .iter()
-                    .any(|&c| !str_utl::is_digit(c) || c != b'-' || c != b',')
+                    .chars()
+                    .any(|c| !c.is_digit(10) && c != '-' && c != ',')
                 {
                     continue;
                 }
 
-                loop {
+                let mut value = value.as_bytes();
+                while !value.is_empty() {
                     let (token, rest) = str_utl::split_string(value, b',');
                     if token.is_empty() {
                         continue;
@@ -92,8 +76,8 @@ pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
                     // TODO: What's the right number here?
                     let max_index = 10_000; // Can't risk out of memory
 
-                    let mut idx1 = 0;
-                    let mut idx2 = 0;
+                    let idx1;
+                    let idx2;
                     if let Some(divider) = token.iter().position(|&c| c == b'-') {
                         // it's a range
 
@@ -142,17 +126,28 @@ pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
                         p.file_priorities[i as usize] = DownloadPriority::DefaultPriority;
                     }
 
-                    if rest.is_empty() {
-                        break;
-                    }
                     value = rest;
                 }
             }
-            b"x.pe" => {
-                let endp = str_utl::parse_endpoint(value);
+            "x.pe" => {
+                p.peers.push(value.parse()?);
+            }
+            "dht" => {
+                let value = value.as_bytes();
+                let divider = value.iter().rev().position(|&c| c == b':');
+                if let Some(n) = divider {
+                    let n = value.len() - 1 - n;
+                    let host = String::from_utf8(value[..n].to_vec()).unwrap();
+                    let port = std::str::from_utf8(&value[n + 1..]).unwrap();
+                    p.dht_nodes.push((host, port.parse()?))
+                }
             }
             _ => {}
         }
+    }
+
+    if !has_ih {
+        return Err(Error::MissingInfoHash);
     }
 
     Ok(())

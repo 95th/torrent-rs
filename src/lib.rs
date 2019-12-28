@@ -5,6 +5,7 @@ pub mod fs;
 mod hex;
 mod magnet_uri;
 mod str_utl;
+mod torrent;
 mod torrent_flags;
 mod torrent_info;
 mod torrent_params;
