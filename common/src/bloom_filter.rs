@@ -18,11 +18,11 @@ macro_rules! bloom_filter {
             }
 
             pub fn find(&self, key: &Sha1Hash) -> bool {
-                has_bits(key.data(), &self.bits, $size)
+                has_bits(key, &self.bits, $size)
             }
 
             pub fn set(&mut self, key: &Sha1Hash) {
-                set_bits(key.data(), &mut self.bits, $size);
+                set_bits(key, &mut self.bits, $size);
             }
 
             pub fn clear(&mut self) {

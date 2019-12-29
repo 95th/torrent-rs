@@ -1,8 +1,9 @@
+use std::fmt;
 use std::net::IpAddr;
 
 const SIZE: usize = 20;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Sha1Hash {
     data: [u8; SIZE],
 }
@@ -31,11 +32,13 @@ impl Sha1Hash {
         digest.bytes().into()
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        assert_eq!(bytes.len(), SIZE);
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != SIZE {
+            return None;
+        }
         let mut buf = [0; SIZE];
         buf.copy_from_slice(bytes);
-        buf.into()
+        Some(buf.into())
     }
 
     pub fn from_address(addr: &IpAddr) -> Sha1Hash {
@@ -43,14 +46,6 @@ impl Sha1Hash {
             IpAddr::V4(addr4) => Sha1Hash::update(&addr4.octets()),
             IpAddr::V6(addr6) => Sha1Hash::update(&addr6.octets()),
         }
-    }
-
-    pub fn data(&self) -> &[u8; SIZE] {
-        &self.data
-    }
-
-    pub fn data_mut(&mut self) -> &mut [u8; SIZE] {
-        &mut self.data
     }
 
     pub fn clear(&mut self) {
@@ -80,6 +75,26 @@ impl Sha1Hash {
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut u8> {
         self.data.iter_mut()
+    }
+}
+
+impl fmt::Display for Sha1Hash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", crate::hex::to_hex(self))
+    }
+}
+
+impl std::ops::Deref for Sha1Hash {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+impl std::ops::DerefMut for Sha1Hash {
+    fn deref_mut(&mut self) -> &mut [u8] {
+        &mut self.data
     }
 }
 
@@ -173,20 +188,6 @@ impl std::ops::Not for Sha1Hash {
     fn not(mut self) -> Sha1Hash {
         self.data.iter_mut().for_each(|v| *v = !*v);
         self
-    }
-}
-
-impl std::ops::Index<usize> for Sha1Hash {
-    type Output = u8;
-
-    fn index(&self, index: usize) -> &u8 {
-        &self.data[index]
-    }
-}
-
-impl std::ops::IndexMut<usize> for Sha1Hash {
-    fn index_mut(&mut self, index: usize) -> &mut u8 {
-        &mut self.data[index]
     }
 }
 

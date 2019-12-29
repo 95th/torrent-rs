@@ -38,7 +38,7 @@ impl DhtState {
             let mut list = vec![];
             for (addr, id) in &self.nids {
                 let mut buf = vec![];
-                buf.write_all(id.data()).unwrap();
+                buf.write_all(id).unwrap();
                 detail::write_address(&mut buf, addr).unwrap();
                 list.push(buf.into());
             }
@@ -79,7 +79,10 @@ pub fn extract_node_ids(value: &ValueRef, key: &str) -> io::Result<NodeIds> {
     if let Some(v) = dict.get(key) {
         if let Some(old_nid) = v.as_bytes() {
             if old_nid.len() == 20 {
-                ids.push((IpAddr::V4(Ipv4Addr::LOCALHOST), NodeId::from_bytes(old_nid)));
+                ids.push((
+                    IpAddr::V4(Ipv4Addr::LOCALHOST),
+                    NodeId::from_bytes(old_nid).unwrap(),
+                ));
                 return Ok(ids);
             }
         }
@@ -95,7 +98,7 @@ pub fn extract_node_ids(value: &ValueRef, key: &str) -> io::Result<NodeIds> {
                         } else {
                             detail::read_v6_address(&mut c)?
                         };
-                        ids.push((addr, NodeId::from_bytes(id)));
+                        ids.push((addr, NodeId::from_bytes(id).unwrap()));
                     }
                     _ => continue,
                 };

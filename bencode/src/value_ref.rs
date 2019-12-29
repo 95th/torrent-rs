@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::io;
 
+// TODO: See if we can work without allocation
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum ValueRef<'a> {
     Int(i64),

@@ -1,13 +1,15 @@
 use common::sha1::Sha1Hash;
+use defaults::Defaults;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::download_priority::DownloadPriority;
-use crate::torrent_flags::TorrentFlags;
-use crate::torrent_info::TorrentInfo;
+use crate::flags::TorrentFlags;
+use crate::info::TorrentInfo;
 
+#[derive(Defaults)]
 pub struct TorrentParams {
     version: usize,
     torrent_info: Arc<TorrentInfo>,
@@ -31,9 +33,11 @@ pub struct TorrentParams {
     active_time: Duration,
     finished_time: Duration,
     seeding_time: Duration,
+
+    #[def = "Instant::now()"]
     added_time: Instant,
-    completed_time: Instant,
-    last_seen_complete: Instant,
+    completed_time: Option<Instant>,
+    last_seen_complete: Option<Instant>,
     num_complete: isize,
     num_incomplete: isize,
     num_downloaded: isize,
@@ -47,6 +51,6 @@ pub struct TorrentParams {
     piece_priorities: Vec<()>,
     merkle_tree: Vec<Sha1Hash>,
     renamed_files: HashMap<(), ()>,
-    last_download: Instant,
-    last_upload: Instant,
+    last_download: Option<Instant>,
+    last_upload: Option<Instant>,
 }

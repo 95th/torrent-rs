@@ -5,3 +5,7 @@ authors = ["95th <vargwin@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+
+
+[dev-dependencies]
+common = { path = "../common" }

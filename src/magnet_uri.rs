@@ -1,11 +1,32 @@
 use crate::download_priority::DownloadPriority;
 use crate::error::{Error, Result};
-use crate::hex;
+use crate::params::TorrentParams;
 use crate::str_utl;
-use crate::torrent_params::TorrentParams;
+use common::hex;
 
 use common::sha1::Sha1Hash;
+use std::fmt;
+use std::str::FromStr;
 use url::Url;
+
+impl FromStr for TorrentParams {
+    type Err = Error;
+
+    fn from_str(uri: &str) -> Result<Self> {
+        let mut params = TorrentParams::default();
+        parse_magnet_uri(uri, &mut params)?;
+        Ok(params)
+    }
+}
+
+impl fmt::Display for TorrentParams {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "magnet:?xt=urn:btih:")?;
+        write!(f, "{}", hex::to_hex(&self.info_hash))?;
+
+        Ok(())
+    }
+}
 
 pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
     let url = Url::parse(uri)?;
@@ -43,14 +64,14 @@ pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
                 let mut s = Sha1Hash::new();
                 match value.len() {
                     40 => {
-                        hex::from_hex(value.as_bytes(), s.data_mut());
+                        hex::from_hex(value.as_bytes(), &mut s);
                     }
                     32 => {
                         let ih = str_utl::base32_decode(value.as_bytes());
                         if ih.len() != 20 {
                             return Err(Error::InvalidInfoHash);
                         }
-                        s.data_mut().copy_from_slice(&ih);
+                        s.copy_from_slice(&ih);
                     }
                     _ => return Err(Error::InvalidInfoHash),
                 }

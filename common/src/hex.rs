@@ -20,7 +20,6 @@ pub fn is_hex(s: &[u8]) -> bool {
 
 pub fn from_hex(s: &[u8], out: &mut [u8]) -> bool {
     let mut i = 0;
-    let mut v = vec![];
     while i < s.len() {
         let t1 = match hex_to_int(s[i]) {
             Some(v) => v << 4,
@@ -34,17 +33,17 @@ pub fn from_hex(s: &[u8], out: &mut [u8]) -> bool {
             Some(v) => v & 0xf,
             None => return false,
         };
-        v.push(t1 & t2);
+        out[i] = t1 & t2;
         i += 1;
     }
     true
 }
 
-pub fn to_hex(s: &[u8]) -> Vec<u8> {
-    let mut v = vec![];
+pub fn to_hex(s: &[u8]) -> String {
+    let mut v = String::new();
     for &c in s {
-        v.push(HEX_CHARS[(c >> 4) as usize]);
-        v.push(HEX_CHARS[(c & 0xf) as usize]);
+        v.push(HEX_CHARS[(c >> 4) as usize] as char);
+        v.push(HEX_CHARS[(c & 0xf) as usize] as char);
     }
     v
 }
@@ -62,8 +61,8 @@ mod test {
 
     #[test]
     fn test_to_hex() {
-        assert_eq!(to_hex(b"\x55\x73"), b"5573");
-        assert_eq!(to_hex(b"\xaB\xd0"), b"abd0");
+        assert_eq!(to_hex(b"\x55\x73"), "5573");
+        assert_eq!(to_hex(b"\xaB\xd0"), "abd0");
     }
 
     #[test]
