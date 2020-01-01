@@ -64,7 +64,7 @@ pub fn parse_magnet_uri(uri: &str, p: &mut TorrentParams) -> Result<()> {
                 let mut s = Sha1Hash::new();
                 match value.len() {
                     40 => {
-                        hex::from_hex(value.as_bytes(), &mut s);
+                        hex::from_hex(value.as_bytes(), &mut s).unwrap();
                     }
                     32 => {
                         let ih = str_utl::base32_decode(value.as_bytes());

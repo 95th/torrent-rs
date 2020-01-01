@@ -36,6 +36,7 @@ pub struct TorrentParams {
 
     #[def = "Instant::now()"]
     added_time: Instant,
+
     completed_time: Option<Instant>,
     last_seen_complete: Option<Instant>,
     num_complete: isize,

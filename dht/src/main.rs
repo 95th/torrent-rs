@@ -6,7 +6,7 @@ fn main() {
     let mut state = DhtState::default();
     state.nids.push((
         "100.100.100.100".parse().unwrap(),
-        NodeId::from_bytes(b"aaaaabbbbbcccccddddd"),
+        NodeId::from_bytes(b"aaaaabbbbbcccccddddd").unwrap(),
     ));
 
     let value = state.save();

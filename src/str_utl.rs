@@ -103,7 +103,7 @@ pub fn is_whitespace(c: u8) -> bool {
     }
 }
 
-pub fn parse_endpoint(mut s: &[u8]) -> Result<SocketAddr> {
+pub fn parse_endpoint(s: &[u8]) -> Result<SocketAddr> {
     let s = trim(s);
     if s.is_empty() {
         return Err(Error::InvalidPort);

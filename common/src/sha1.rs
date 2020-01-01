@@ -267,7 +267,7 @@ mod test {
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xe0
             ],
-            s.data()
+            &*s
         )
     }
 
@@ -280,7 +280,7 @@ mod test {
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                 0xff, 0xff, 0xff, 0xff, 0x00, 0x00
             ],
-            s.data()
+            &*s
         )
     }
 
@@ -293,7 +293,7 @@ mod test {
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                 0xff, 0xff, 0xff, 0xfe, 0x00, 0x00
             ],
-            s.data()
+            &*s
         )
     }
 
@@ -301,20 +301,20 @@ mod test {
     fn shift_left_04() {
         let mut s = Sha1Hash::max();
         s <<= 160;
-        assert_eq!(&[0; 20], s.data())
+        assert_eq!(&[0; 20], &*s)
     }
 
     #[test]
     fn shift_left_05() {
         let mut s = Sha1Hash::max();
         s <<= 20000;
-        assert_eq!(&[0; 20], s.data())
+        assert_eq!(&[0; 20], &*s)
     }
     #[test]
     fn shift_left_06() {
         let mut s = Sha1Hash::max();
         s <<= 0;
-        assert_eq!(&[0xff; 20], s.data())
+        assert_eq!(&[0xff; 20], &*s)
     }
 
     #[test]
@@ -326,7 +326,7 @@ mod test {
                 0x07, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
             ],
-            s.data()
+            &*s
         )
     }
 
@@ -339,7 +339,7 @@ mod test {
                 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
             ],
-            s.data()
+            &*s
         )
     }
 
@@ -352,7 +352,7 @@ mod test {
                 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             ],
-            s.data()
+            &*s
         )
     }
 
@@ -360,21 +360,21 @@ mod test {
     fn shift_right_04() {
         let mut s = Sha1Hash::max();
         s >>= 160;
-        assert_eq!(&[0x00; 20], s.data())
+        assert_eq!(&[0x00; 20], &*s)
     }
 
     #[test]
     fn shift_right_05() {
         let mut s = Sha1Hash::max();
         s >>= 20000;
-        assert_eq!(&[0x00; 20], s.data())
+        assert_eq!(&[0x00; 20], &*s)
     }
 
     #[test]
     fn shift_right_06() {
         let mut s = Sha1Hash::max();
         s >>= 0;
-        assert_eq!(&[0xff; 20], s.data())
+        assert_eq!(&[0xff; 20], &*s)
     }
 
     #[test]
@@ -387,9 +387,9 @@ mod test {
     fn count_leading_zeros_02() {
         let mut s = Sha1Hash::from([0x01; 20]);
         assert_eq!(7, s.leading_zeros());
-        s.data_mut()[0] = 0;
+        s[0] = 0;
         assert_eq!(15, s.leading_zeros());
-        s.data_mut()[1] = 0;
+        s[1] = 0;
         assert_eq!(23, s.leading_zeros());
     }
 

@@ -18,25 +18,22 @@ pub fn is_hex(s: &[u8]) -> bool {
     true
 }
 
-pub fn from_hex(s: &[u8], out: &mut [u8]) -> bool {
+#[must_use]
+pub fn from_hex(s: &[u8], out: &mut [u8]) -> Option<()> {
     let mut i = 0;
+    let mut j = 0;
     while i < s.len() {
-        let t1 = match hex_to_int(s[i]) {
-            Some(v) => v << 4,
-            None => return false,
-        };
+        let t1 = hex_to_int(s[i])? << 4;
         i += 1;
         if i == s.len() {
-            return false;
+            return None;
         }
-        let t2 = match hex_to_int(s[i]) {
-            Some(v) => v & 0xf,
-            None => return false,
-        };
-        out[i] = t1 & t2;
+        let t2 = hex_to_int(s[i])? & 0xf;
         i += 1;
+        out[j] = t1 & t2;
+        j += 1;
     }
-    true
+    Some(())
 }
 
 pub fn to_hex(s: &[u8]) -> String {
@@ -56,7 +53,7 @@ mod test {
     fn test_from_hex() {
         let s = b"0123456789012345678901234567890123456789";
         let mut out = [0u8; 20];
-        assert!(from_hex(s, &mut out));
+        assert!(from_hex(s, &mut out).is_some());
     }
 
     #[test]
