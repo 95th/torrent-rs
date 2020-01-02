@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use url::Url;
 
+#[derive(Debug)]
 pub struct Torrent {
     /// Tracker URL
     announce_url: Url,
@@ -19,11 +20,13 @@ pub struct Torrent {
     kind: TorrentKind,
 }
 
+#[derive(Debug)]
 pub enum TorrentKind {
     File(TorrentFile),
     Directory(Vec<TorrentFile>),
 }
 
+#[derive(Debug)]
 pub struct TorrentFile {
     path: PathBuf,
     len: usize,
@@ -85,8 +88,12 @@ impl Torrent {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+
     #[test]
     fn test_parse() {
-        // todo
+        let bytes = include_bytes!("../bencode/tests/update.torrent");
+        let t = Torrent::parse(bytes).unwrap();
+        println!("{:?}", t);
     }
 }

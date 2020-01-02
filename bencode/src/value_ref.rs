@@ -235,7 +235,7 @@ impl<'a> ValueRef<'a> {
                         let mut map = BTreeMap::new();
                         while v_stack.len() > len {
                             let val = v_stack.pop().unwrap();
-                            if let Some(key) = v_stack.pop().and_then(|v| v.as_str()) {
+                            if let Some(key) = v_stack.pop().unwrap().as_str() {
                                 map.insert(key, val);
                             } else {
                                 return Err(Error::ParseDict);

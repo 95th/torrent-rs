@@ -243,7 +243,7 @@ impl Value {
                         let mut map = BTreeMap::new();
                         while v_stack.len() > len {
                             let val = v_stack.pop().unwrap();
-                            if let Some(key) = v_stack.pop().and_then(|v| v.into_string()) {
+                            if let Some(key) = v_stack.pop().unwrap().into_string() {
                                 map.insert(key, val);
                             } else {
                                 return Err(Error::ParseDict);
